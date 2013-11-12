@@ -8,7 +8,7 @@ public class ResMain
 {
 
     /* upper bound on total degree to compute */
-    static final int T_CAP = 75;
+    static final int T_CAP = 60;
     static final boolean DEBUG = false;
 
     static HashMap<String,CellData> output = new HashMap<String,CellData>();
@@ -46,7 +46,7 @@ public class ResMain
         return ret;
     }
 
-    static Map<String,Iterable<int[]>> part_cache = new TreeMap<String,Iterable<int[]>>();
+    static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
     static String part_cache_keystr(int n, int max) {
         return "("+n+"/"+max+"/"+Sq.P+")";
     }
@@ -393,18 +393,28 @@ class Dot
 
 class Sq
 {
+    static final int P = 2;
+
     int[] q; /* Indices of the power operations. -1 indicates Bockstein. */
+
+//    static Map<String,Iterable<Sq>> times_cache = new HashMap<String,Iterable<Sq>>(); 
 
     Sq(int[] qq) { q = qq; }
 
     Iterable<Sq> times(Sq o)
     {
+//        Iterable<Sq> cached = times_cache.get(this);
+//        if(cached != null) return cached;
+
         int[] ret = new int[q.length + o.q.length];
         for(int i = 0; i < q.length; i++)
             ret[i] = q[i];
         for(int i = 0; i < o.q.length; i++)
             ret[q.length + i] = o.q[i];
 
+//        Iterable<Sq> iret = new Sq(ret).resolve();
+//        times_cache.put(toString() + "/" + o.toString(), iret);
+//        return iret;
         return new Sq(ret).resolve();
     }
 
@@ -461,6 +471,16 @@ class Sq
         String s = "";
         for(int i : q) s += "Sq"+i;
         return s;
+    }
+
+    public int hashCode()
+    {
+        return toString().hashCode();
+    }
+
+    public boolean equals(Object o)
+    {
+        return toString().equals(o.toString());
     }
 }
 
