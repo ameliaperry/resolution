@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cd sandbox
+java -Xprof -jar resolution.jar
+cd ..
