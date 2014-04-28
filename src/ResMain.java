@@ -8,12 +8,12 @@ public class ResMain
 {
 
     /* upper bound on total degree to compute */
-    static final int T_CAP = 60;
+    static final int T_CAP = 35;
     static final boolean DEBUG = false;
 
     static HashMap<String,CellData> output = new HashMap<String,CellData>();
     static String keystr(int s, int t) {
-        return "("+s+","+t+","+Sq.P+")";
+        return "("+s+","+t+","+Math.P+")";
     }
 
     /* convenience methods for cell data lookup */
@@ -34,50 +34,6 @@ public class ResMain
     }
 
 
-    /* The Steenrod algebra. */
-    static Iterable<Sq> steenrod(int n)
-    {
-        Iterable<int[]> p = part(n,n);
-        Collection<Sq> ret = new ArrayList<Sq>();
-
-        for(int[] q : p)
-            ret.add(new Sq(q));
-
-        return ret;
-    }
-
-    static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
-    static String part_cache_keystr(int n, int max) {
-        return "("+n+"/"+max+"/"+Sq.P+")";
-    }
-
-    static Iterable<int[]> part(int n, int max)
-    {
-        if(n == 0) { /* the trivial solution */
-            Collection<int[]> ret = new ArrayList<int[]>();
-            ret.add(new int[] {});
-            return ret;
-        }
-        if(max == 0) return new ArrayList<int[]>(); /* no solutions */
-        Iterable<int[]> ret0 = part_cache.get(part_cache_keystr(n,max));
-        if(ret0 != null) return ret0;
-
-        Collection<int[]> ret = new ArrayList<int[]>();
-
-        for(int i = (n+1)/2; i <= max; i++) {
-            for(int[] q0 : part(n-i, i/2)) {
-                int[] q1 = new int[q0.length + 1];
-                q1[0] = i;
-                for(int j = 0; j < q0.length; j++)
-                    q1[j+1] = q0[j];
-                ret.add(q1);
-            }
-        }
-
-        part_cache.put(part_cache_keystr(n,max), ret);
-
-        return ret;
-    }
 
 
     /* Computes a basis complement to the image of mat inside the span of okbasis */
@@ -101,7 +57,7 @@ public class ResMain
         for(DModSet ms : okbasis)
             val_set.union(ms);
         if(DEBUG) System.out.println("val_set: "+val_set);
-        Dot[] values = val_set.toArray(new Dot[] {}); 
+        Dot[] values = val_set.toArray(); 
 
         /* old code path
          
@@ -165,14 +121,14 @@ public class ResMain
          * this is a little tighter, and avoids using mult() */
 
         /* construct our huge augmented behemoth */
-        boolean[][] aug = new boolean[values.length][okbasis.length + keys.length + values.length];
+        int[][] aug = new int[values.length][okbasis.length + keys.length + values.length];
         for(int i = 0; i < values.length; i++) {
             for(int j = 0; j < okbasis.length; j++)
-                aug[i][j] = okbasis[j].contains(values[i]);
+                aug[i][j] = Math.dmod(okbasis[j].getsafe(values[i]));
             for(int j = 0; j < keys.length; j++)
-                aug[i][j + okbasis.length] = mat.get(keys[j]).contains(values[i]);
+                aug[i][j + okbasis.length] = Math.dmod(mat.get(keys[j]).getsafe(values[i]));
             for(int j = 0; j < values.length; j++)
-                aug[i][j + okbasis.length + keys.length] = (i == j);
+                aug[i][j + okbasis.length + keys.length] = (i == j ? 1 : 0);
         }
         Matrices.printMatrix("aug", aug);
 
@@ -181,7 +137,7 @@ public class ResMain
         Matrices.printMatrix("rref(aug)", aug);
 
         /* extract mat | id */
-        boolean[][] bmatrr = new boolean[values.length][keys.length + values.length];
+        int[][] bmatrr = new int[values.length][keys.length + values.length];
         for(int i = 0; i < values.length; i++)
             for(int j = 0; j < keys.length + values.length; j++)
                 bmatrr[i][j] = aug[i][j + okbasis.length];
@@ -196,12 +152,12 @@ public class ResMain
         /* now we're back to the old code path */
         
         /* extract and invert (via rref) the row transform matrix */
-        boolean[][] transf = new boolean[values.length][2 * values.length];
+        int[][] transf = new int[values.length][2 * values.length];
         for(int i = 0; i < values.length; i++) {
             for(int j = 0; j < values.length; j++)
                 transf[i][j] = bmatrr[i][j + keys.length];
             for(int j = 0; j < values.length; j++)
-                transf[i][j + values.length] = (i == j);
+                transf[i][j + values.length] = (i == j ? 1 : 0);
         }
         Matrices.printMatrix("transf", transf);
         Matrices.rref(transf, values.length);
@@ -212,8 +168,7 @@ public class ResMain
         for(int j = l2; j < l1; j++) {
             DModSet out = new DModSet();
             for(int i = 0; i < values.length; i++) {
-                if(transf[i][j + values.length])
-                    out.add(values[i]);
+                out.add(values[i], transf[i][j + values.length]);
             }
             ret[j - l2] = out;
         }
@@ -237,9 +192,9 @@ public class ResMain
                 dat0.kbasis = new DModSet[] {};
             } else {
                 List<DModSet> kbasis0 = new ArrayList<DModSet>();
-                for(Sq q : steenrod(t)) {
+                for(Sq q : Sq.steenrod(t)) {
                     DModSet ms = new DModSet();
-                    ms.add(new Dot(q,0,0));
+                    ms.add(new Dot(q,0,0), 1);
                     kbasis0.add(ms);
                 }
                 dat0.kbasis = kbasis0.toArray(new DModSet[] {});
@@ -256,7 +211,7 @@ public class ResMain
                 ArrayList<Dot> basis_l = new ArrayList<Dot>();
                 for(int gt = s; gt < t; gt++) {
                     for(int i = 0; i < ngens(s,gt); i++) {
-                        for(Sq q : steenrod(t - gt)) {
+                        for(Sq q : Sq.steenrod(t - gt)) {
                             basis_l.add(new Dot(q,gt,i));
                         }
                     }
@@ -271,10 +226,10 @@ public class ResMain
 
                     /* compute the image of this basis vector */
                     DModSet image = new DModSet();
-                    for(Dot d : gimg(s,basis[i].t)[basis[i].idx]) {
-                        Iterable<Sq> c = basis[i].sq.times(d.sq);
-                        for(Sq q : c)
-                            image.add(new Dot(q, d.t, d.idx));
+                    for(Map.Entry<Dot,Integer> d : gimg(s,basis[i].t)[basis[i].idx].entrySet()) {
+                        ModSet<Sq> c = basis[i].sq.times(d.getKey().sq);
+                        for(Map.Entry<Sq,Integer> q : c.entrySet())
+                            image.add(new Dot(q.getKey(), d.getKey().t, d.getKey().idx), d.getValue() * q.getValue());
                     }
 
                     if(DEBUG) System.out.println("Image of "+basis[i]+" is "+image);
@@ -325,6 +280,20 @@ public class ResMain
 
     public static void main(String[] args)
     {
+        /* tests */
+/*        System.out.println("Steenrod:");
+        for(int i = 0; i < 30; i++) {
+            System.out.printf("%2d: ",i);
+            for(Sq q : Sq.steenrod(i)) {
+                System.out.print(q);
+                System.out.print(" ");
+            }
+            System.out.println();
+        }
+        Sq p2 = new Sq(new int[] {8});
+        Sq bp1 = new Sq(new int[] {5});
+        System.out.println("P2BP1: " + p2.times(bp1)); */
+
         /* init */
         /* make the sphere A-module */
 
@@ -334,7 +303,7 @@ public class ResMain
         /* print */
         System.out.println("Conclusion:");
         for(int s = T_CAP - 1; s >= 0; s--) {
-            for(int t = s; t < T_CAP; t++) {
+            for(int t = s; t <= T_CAP; t++) {
                 int n = ngens(s,t);
                 if(n > 0)
                     System.out.printf("%2d ", ngens(s,t));
@@ -391,39 +360,67 @@ class Dot
 }
 
 
+class Math
+{
+//    static final int P = 3;
+    static final int P = 2;
+//    static final int[] inverse = { 0, 1, 3, 2, 4 }; /* multiplicative inverses mod P */
+    static final int[] inverse = { 0, 1, 2 }; /* multiplicative inverses mod P */
+
+    static boolean binom_2(int a, int b)
+    {
+        return ((~a) & b) == 0;
+    }
+
+    static Map<String,Integer> binom_cache = new HashMap<String,Integer>();
+    static String binom_cache_str(int a, int b) { return "("+a+"///"+b+"///"+Math.P+")"; }
+    static int binom_p(int a, int b)
+    {
+        String s = binom_cache_str(a,b);
+        Integer i = binom_cache.get(s);
+        if(i != null) return i;
+
+        int ret;
+        if(a < 0 || b < 0 || b > a)
+            ret = 0;
+        else if(a == 0)
+            ret = 1;
+        else ret = dmod(binom_p(a-1,b) + binom_p(a-1,b-1));
+
+        binom_cache.put(s,ret);
+        return ret;
+    }
+
+    static int dmod(int n)
+    {
+        return (n + (P << 8)) % P;
+    }
+}
+
+
 class Sq
 {
-    static final int P = 2;
-
-    int[] q; /* Indices of the power operations. -1 indicates Bockstein. */
-
-//    static Map<String,Iterable<Sq>> times_cache = new HashMap<String,Iterable<Sq>>(); 
+    int[] q; /* Indices of the power operations.
+                Mod 2, i indicates Sq^i.
+                Mod p>2, 2k(p-1) indicates P^i, 2k(p-1)+1 indicates B P^i. */
 
     Sq(int[] qq) { q = qq; }
 
-    Iterable<Sq> times(Sq o)
+    ModSet<Sq> times(Sq o)
     {
-//        Iterable<Sq> cached = times_cache.get(this);
-//        if(cached != null) return cached;
-
         int[] ret = new int[q.length + o.q.length];
         for(int i = 0; i < q.length; i++)
             ret[i] = q[i];
         for(int i = 0; i < o.q.length; i++)
             ret[q.length + i] = o.q[i];
 
-//        Iterable<Sq> iret = new Sq(ret).resolve();
-//        times_cache.put(toString() + "/" + o.toString(), iret);
-//        return iret;
-        return new Sq(ret).resolve();
+        if(Math.P == 2)
+            return new Sq(ret).resolve_2();
+        else
+            return new Sq(ret).resolve_p();
     }
 
-    static boolean binom(int a, int b)
-    {
-        return ((~a) & b) == 0;
-    }
-
-    Iterable<Sq> resolve()
+    ModSet<Sq> resolve_2()
     {
         ModSet<Sq> ret = new ModSet<Sq>();
 
@@ -431,13 +428,13 @@ class Sq
             int a = q[i];
             int b = q[i+1];
 
-            if(a >= 2*b)
+            if(a >= 2 * b)
                 continue;
 
             /* apply Adem relation */
             for(int c = 0; c <= a/2; c++) {
 
-                if(! binom(b - c - 1, a - 2*c))
+                if(! Math.binom_2(b - c - 1, a - 2*c))
                     continue;
 
                 int[] t;
@@ -453,16 +450,89 @@ class Sq
                 }
 
                 /* recurse */
-                for(Sq sub : new Sq(t).resolve())
-                    ret.add(sub);
+                for(Map.Entry<Sq,Integer> sub : new Sq(t).resolve_2().entrySet())
+                    ret.add(sub.getKey(), sub.getValue());
             }
 
             return ret;
         }
 
         /* all clear */
-        ret.add(this);
+        ret.add(this, 1);
         return ret;
+    }
+
+    ModSet<Sq> resolve_p()
+    {
+        ModSet<Sq> ret = new ModSet<Sq>();
+        int Q = 2 * (Math.P - 1); /* convenience */
+
+        for(int i = q.length - 2; i >= 0; i--) {
+            int x = q[i];
+            int y = q[i+1];
+
+            if(x >= Math.P * y)
+                continue;
+
+            /* apply Adem relation */
+            int a = x / Q;
+            int b = y / Q;
+            int rx = x % Q;
+            int ry = y % Q;
+
+            for(int c = 0; c <= a/Math.P; c++) {
+
+                int sign = 1 - 2 * ((a+c) % 2);
+
+//                System.out.printf("adem: x=%d y=%d a=%d b=%d sign=%d\n", x, y, a, b, sign);
+
+                if(rx == 0 && ry == 0)
+                    resolve_p_add_term(sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P), (a+b-c)*Q, c*Q, i, ret);
+                else if(rx == 1 && ry == 0)
+                    resolve_p_add_term(sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P), (a+b-c)*Q+1, c*Q, i, ret);
+                else if(rx == 0 && ry == 1) {
+                    resolve_p_add_term(sign*Math.binom_p((Math.P-1)*(b-c),a-c*Math.P), (a+b-c)*Q+1, c*Q, i, ret);
+                    resolve_p_add_term(-sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P-1), (a+b-c)*Q, c*Q+1, i, ret);
+                }
+                else if(rx == 1 && ry == 1) {
+                    resolve_p_add_term(-sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P-1), (a+b-c)*Q+1, c*Q+1, i, ret);
+                } else {
+                    System.err.println("Bad Adem case");
+                    System.exit(1);
+                }
+                       
+            }
+
+            return ret;
+        }
+
+        /* all clear */
+        ret.add(this, 1);
+        return ret;
+    }
+
+    private void resolve_p_add_term(int coeff, int a, int b, int i, ModSet<Sq> ret)
+    {
+//        System.out.printf("adem_term: coeff=%d a=%d b=%d\n", coeff, a, b);
+
+        coeff = Math.dmod(coeff);
+        if(coeff == 0) return; /* save some work... */
+
+        int[] t;
+        if(b == 0) {
+            t = Arrays.copyOf(q, q.length - 1);
+            for(int k = i+2; k < q.length; k++)
+                t[k-1] = q[k];
+            t[i] = a;
+        } else {
+            t = Arrays.copyOf(q, q.length);
+            t[i] = a;
+            t[i+1] = b;
+        }
+
+        /* recurse */
+        for(Map.Entry<Sq,Integer> sub : new Sq(t).resolve_p().entrySet())
+            ret.add(sub.getKey(), sub.getValue() * coeff);
     }
 
     public String toString()
@@ -482,48 +552,164 @@ class Sq
     {
         return toString().equals(o.toString());
     }
+
+
+    /* The Steenrod algebra. */
+    static Iterable<Sq> steenrod(int n)
+    {
+        Iterable<int[]> p;
+        if(Math.P == 2) p = part_2(n,n);
+        else            p = part_p(n,n);
+        Collection<Sq> ret = new ArrayList<Sq>();
+
+        for(int[] q : p)
+            ret.add(new Sq(q));
+
+        return ret;
+    }
+
+    static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
+    static String part_cache_keystr(int n, int max) {
+        return "("+n+"/"+max+"/"+Math.P+")";
+    }
+
+    static Iterable<int[]> part_2(int n, int max)
+    {
+        if(n == 0) { /* the trivial solution */
+            Collection<int[]> ret = new ArrayList<int[]>();
+            ret.add(new int[] {});
+            return ret;
+        }
+        if(max == 0) return new ArrayList<int[]>(); /* no solutions */
+        Iterable<int[]> ret0 = part_cache.get(part_cache_keystr(n,max));
+        if(ret0 != null) return ret0;
+
+        Collection<int[]> ret = new ArrayList<int[]>();
+
+        for(int i = (n+1)/2; i <= max; i++) {
+            for(int[] q0 : part_2(n-i, i/2)) {
+                int[] q1 = new int[q0.length + 1];
+                q1[0] = i;
+                for(int j = 0; j < q0.length; j++)
+                    q1[j+1] = q0[j];
+                ret.add(q1);
+            }
+        }
+
+        part_cache.put(part_cache_keystr(n,max), ret);
+
+        return ret;
+    }
+
+    static Iterable<int[]> part_p(int n, int max)
+    {
+        if(n == 0) { /* the trivial solution */
+            Collection<int[]> ret = new ArrayList<int[]>();
+            ret.add(new int[] {});
+            return ret;
+        }
+        if(max == 0) return new ArrayList<int[]>(); /* no solutions */
+        Iterable<int[]> ret0 = part_cache.get(part_cache_keystr(n,max));
+        if(ret0 != null) return ret0;
+
+        Collection<int[]> ret = new ArrayList<int[]>();
+
+        for(int i = 0; i <= max; i += 2 * (Math.P - 1)) { /* XXX i could start higher? */
+            /* try P^i */
+            for(int[] q0 : part_p(n-i, i/Math.P)) {
+                int[] q1 = new int[q0.length + 1];
+                q1[0] = i;
+                for(int j = 0; j < q0.length; j++)
+                    q1[j+1] = q0[j];
+                ret.add(q1);
+            }
+            /* try BP^i */
+            if(i+1 > max) break;
+            for(int[] q0 : part_p(n-(i+1), (i+1)/Math.P)) {
+                int[] q1 = new int[q0.length + 1];
+                q1[0] = i+1;
+                for(int j = 0; j < q0.length; j++)
+                    q1[j+1] = q0[j];
+                ret.add(q1);
+            }
+        }
+
+        part_cache.put(part_cache_keystr(n,max), ret);
+
+        return ret;
+    }
 }
 
 
-class ModSet<T> extends HashSet<T>
+class ModSet<T> extends HashMap<T,Integer>
 {
-    public boolean add(T d)
+    public void add(T d, int mult)
     {
-        if(contains(d)) {
+        int c;
+        if(containsKey(d)) c = get(d);
+        else c = 0;
+
+        c = Math.dmod(c + mult);
+
+        if(c == 0) 
             remove(d);
-            return true;
-        } else return super.add(d);
-    }
-    public void union(Set<T> s)
+        else
+            put(d, c);
+    } 
+
+    public int getsafe(T d)
     {
-        for(T d : s)
-            super.add(d);
+        Integer i = get(d);
+        if(i == null)
+            return 0;
+        return i;
     }
+
+    public boolean contains(T d)
+    {
+        return (getsafe(d) % Math.P != 0);
+    }
+
+    public void union(ModSet<T> s)
+    {
+        for(T d : s.keySet()) {
+            if(!containsKey(d))
+                put(d,1);
+        }
+    }
+
     public String toString()
     {
         if(isEmpty())
             return "0";
         String s = "";
-        for(T t : this) {
+        for(Map.Entry<T,Integer> e : entrySet()) {
             if(s.length() != 0)
                 s += " + ";
-            s += t.toString();
+            s += e.getValue();
+            s += e.getKey().toString();
         }
         return s;
     }
 }
 
-class DModSet extends ModSet<Dot> { } /* to work around generic array restrictions */
+class DModSet extends ModSet<Dot> { /* to work around generic array restrictions */
+    public Dot[] toArray() {
+        return keySet().toArray(new Dot[] {});
+    }
+}
 
 
 
 class Matrices
 {
-    /* Static matrix operation methods */
+    /* Static matrix operation methods.
+     * It should be noted that matrices are assumed to be reduced to lowest
+     * positive residues (mod p), and these operations respect that. */
 
     /* row-reduces a matrix (in place).
      * returns an array giving the column position of the leading 1 in each row */
-    static int[] rref(boolean[][] mat, int preserve_right)
+    static int[] rref(int[][] mat, int preserve_right)
     {
         if(mat.length == 0)
             return new int[] {};
@@ -533,53 +719,44 @@ class Matrices
         for(int j = 0; j < mat[0].length - preserve_right; j++) {
             int i;
             for(i = good_rows; i < mat.length; i++) {
-                if(mat[i][j]) break;
+                if(mat[i][j] != 0) break;
             }
             if(i == mat.length) continue;
 
+            //Matrices.printMatrix("rref 0", mat);
+
             /* swap the rows */
-            boolean[] row = mat[good_rows];
+            int[] row = mat[good_rows];
             mat[good_rows] = mat[i];
             mat[i] = row;
             i = good_rows++;
             leading_cols[i] = j;
+            
+            //Matrices.printMatrix("rref 1", mat);
+
+            /* normalize the row */
+            int inv = Math.inverse[mat[i][j]];
+            for(int k = 0; k < mat[0].length; k++)
+                mat[i][k] = (mat[i][k] * inv) % Math.P;
+            
+            //Matrices.printMatrix("rref 2", mat);
 
             /* clear the rest of the column */
             for(int k = 0; k < mat.length; k++) {
                 if(k == i) continue;
-                if(!mat[k][j]) continue;
+                int mul = Math.P - mat[k][j];
+                if(mul == Math.P) continue;
                 for(int l = 0; l < mat[0].length; l++)
-                    mat[k][l] ^= mat[i][l];
+                    mat[k][l] = (mat[k][l] + mat[i][l] * mul) % Math.P;
             }
+            //Matrices.printMatrix("rref 3", mat);
         }
 
         return Arrays.copyOf(leading_cols, good_rows);
     }
 
 
-    /*
-    static boolean[][] mult(boolean[][] left, boolean[][] mat)
-    {
-        if(mat.length == 0)
-            return new boolean[0][0];
-        /* Strictly speaking this doesn't make sense.
-         * We should be able to multiply m x 0 by 0 x n, but we don't have
-         * enough information to do so.
-         * But for our application, <left> is always square. *//*
-
-        boolean[][] ret = new boolean[left.length][mat[0].length];
-
-        for(int i = 0; i < left.length; i++)
-            for(int j = 0; j < mat[0].length; j++)
-                for(int k = 0; k < mat.length; k++)
-                    ret[i][j] ^= (left[i][k] && mat[k][j]);
-
-        return ret;
-    }
-    */
-
-
-    static void printMatrix(String name, boolean[][] mat)
+    static void printMatrix(String name, int[][] mat)
     {
         if(!ResMain.DEBUG) return;
 
@@ -592,7 +769,7 @@ class Matrices
         for(int i = 0; i < mat.length; i++) {
             System.out.println();
             for(int j = 0; j < mat[0].length; j++)
-                System.out.printf("%d ", mat[i][j] ? 1 : 0);
+                System.out.printf("%2d ", mat[i][j]);
         }
         System.out.println();
 
@@ -606,24 +783,25 @@ class DotMatrix extends HashMap<Dot,DModSet>
     DModSet[] ker()
     {
         /* choose an ordering on all keys and values */
-        Dot[] keys = keySet().toArray(new Dot[] {});
+        Dot[] keys = keySet().toArray(new Dot[]{});
         DModSet val_set = new DModSet();
         for(DModSet ms : values()) 
             val_set.union(ms);
-        Dot[] values = val_set.toArray(new Dot[] {});
+        Dot[] values = val_set.toArray();
 
         if(ResMain.DEBUG) System.out.printf("ker(): %d x %d\n", values.length, keys.length);
 
-        /* convert to a matrix of booleans */
-        boolean[][] mat = new boolean[values.length][keys.length];
+        /* convert to a matrix of ints */
+        int[][] mat = new int[values.length][keys.length];
         for(int i = 0; i < values.length; i++)
             for(int j = 0; j < keys.length; j++)
-                mat[i][j] = get(keys[j]).contains(values[i]);
+                mat[i][j] = Math.dmod(get(keys[j]).getsafe(values[i]));
 
         Matrices.printMatrix("mat", mat);
 
         /* convert to row-reduced echelon form */
         int[] leading_cols = Matrices.rref(mat, 0);
+        Matrices.printMatrix("rref(mat)", mat);
 
         /* read out the kernel */
         int idx = 0;
@@ -639,11 +817,11 @@ class DotMatrix extends HashMap<Dot,DModSet>
 
             /* not a leading column, so we obtain a kernel element */
             DModSet ms = new DModSet();
-            ms.add(keys[j]);
+            ms.add(keys[j], 1);
             for(int i = 0; i < values.length; i++) {
-                if(mat[i][j]) {
+                if(mat[i][j] != 0) {
                     ResMain.die_if(i >= leading_cols.length, "bad rref: no leading one");
-                    ms.add(keys[leading_cols[i]]);
+                    ms.add(keys[leading_cols[i]], -mat[i][j]);
                 }
             }
 
