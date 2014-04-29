@@ -11,6 +11,7 @@ public class ResMain
     static final int T_CAP = 100;
     static final boolean DEBUG = false;
     static final boolean MATRIX_DEBUG = false;
+    static final boolean MICHAEL_MODE = true;
 
     static HashMap<String,CellData> output = new HashMap<String,CellData>();
     static String keystr(int s, int t) {
@@ -346,7 +347,7 @@ class Sq
         for(int i = 0; i < o.q.length; i++)
             ret[q.length + i] = o.q[i];
 
-        if(Math.P == 2)
+        if(Math.P == 2 && !MICHAEL_MODE)
             return new Sq(ret).resolve_2();
         else
             return new Sq(ret).resolve_p();
