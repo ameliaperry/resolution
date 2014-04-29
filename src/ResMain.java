@@ -8,8 +8,9 @@ public class ResMain
 {
 
     /* upper bound on total degree to compute */
-    static final int T_CAP = 35;
+    static final int T_CAP = 100;
     static final boolean DEBUG = false;
+    static final boolean MATRIX_DEBUG = false;
 
     static HashMap<String,CellData> output = new HashMap<String,CellData>();
     static String keystr(int s, int t) {
@@ -19,7 +20,7 @@ public class ResMain
     /* convenience methods for cell data lookup */
     static int ngens(int s, int t) {
         CellData dat = output.get(keystr(s,t));
-        die_if(dat == null, "Data null in ("+s+","+t+")");
+        if(dat == null) return -1;
         return dat.gimg.length;
     }
     static DModSet[] kbasis(int s, int t) {
@@ -36,6 +37,95 @@ public class ResMain
 
 
 
+
+    /* Main minimal-resolution procedure. */
+
+    static void resolve(AMod a)
+    {
+
+        for(int t = 0; t <= T_CAP; t++) {
+
+            /* first handle the s=0 case: process the input */
+            /* XXX TMP just using the sphere as input */
+            CellData dat0 = new CellData();
+            dat0.gimg = new DModSet[] {};
+            if(t == 0) {
+                dat0.kbasis = new DModSet[] {};
+            } else {
+                List<DModSet> kbasis0 = new ArrayList<DModSet>();
+                for(Sq q : Sq.steenrod(t)) {
+                    DModSet ms = new DModSet();
+                    ms.add(new Dot(q,0,0), 1);
+                    kbasis0.add(ms);
+                }
+                dat0.kbasis = kbasis0.toArray(new DModSet[] {});
+            }
+            System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", 0, t, 0, dat0.kbasis.length);
+            output.put(keystr(0,t), dat0);
+
+
+            /* now the typical s>0 case */
+
+            for(int s = 1; s <= t; s++) {
+
+                /* compute the basis for this resolution bidegree */
+                ArrayList<Dot> basis_l = new ArrayList<Dot>();
+                for(int gt = s; gt < t; gt++) {
+                    for(int i = 0; i < ngens(s,gt); i++) {
+                        for(Sq q : Sq.steenrod(t - gt)) {
+                            basis_l.add(new Dot(q,gt,i));
+                        }
+                    }
+                }
+                Dot[] basis = basis_l.toArray(new Dot[]{});
+                DModSet[] okbasis = kbasis(s-1,t);
+
+                /* compute what the map does in this basis */
+                DotMatrix mat = new DotMatrix();
+                if(DEBUG) System.out.printf("(%d,%d) Map:\n",s,t);
+
+                for(int i = 0; i < basis.length; i++) {
+                    /* compute the image of this basis vector */
+                    DModSet image = new DModSet();
+                    for(Map.Entry<Dot,Integer> d : gimg(s,basis[i].t)[basis[i].idx].entrySet()) {
+                        ModSet<Sq> c = basis[i].sq.times(d.getKey().sq);
+                        for(Map.Entry<Sq,Integer> q : c.entrySet())
+                            image.add(new Dot(q.getKey(), d.getKey().t, d.getKey().idx), d.getValue() * q.getValue());
+                    }
+
+                    if(DEBUG) System.out.println("Image of "+basis[i]+" is "+image);
+
+                    mat.put(basis[i], image);
+                }
+
+                /* the kernel of mat is kbasis */
+                DModSet[] kbasis = mat.ker();
+                if(DEBUG && kbasis.length != 0) {
+                    System.out.println("Kernel:");
+                    for(DModSet dm : kbasis)
+                        System.out.println(dm);
+                }
+
+
+                /* from mat and okbasis, produce gimg */
+                if(DEBUG) System.out.printf("\ngimg at (%d,%d)\n", s,t);
+                DModSet[] gimg = calc_gimg(mat, okbasis);
+                if(DEBUG) System.out.println();
+
+                output.put(keystr(s,t), new CellData(gimg, kbasis));
+                if(DEBUG && gimg.length > 0) {
+                    System.out.println("Generators:");
+                    for(DModSet g : gimg) System.out.println(g);
+                }
+                print_result(t);
+                System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", s, t, gimg.length, kbasis.length);
+                System.out.println();
+            }
+        }
+    }
+    
+    
+    
     /* Computes a basis complement to the image of mat inside the span of okbasis */
 
     static DModSet[] calc_gimg(DotMatrix mat, DModSet[] okbasis)
@@ -58,67 +148,6 @@ public class ResMain
             val_set.union(ms);
         if(DEBUG) System.out.println("val_set: "+val_set);
         Dot[] values = val_set.toArray(); 
-
-        /* old code path
-         
-        /* convert mat to an augmented matrix of booleans *//*
-        boolean[][] bmat = new boolean[values.length][keys.length + values.length];
-        for(int i = 0; i < values.length; i++) {
-            for(int j = 0; j < keys.length; j++) {
-                bmat[i][j] = mat.get(keys[j]).contains(values[i]);
-            }
-            for(int j = 0; j < values.length; j++)
-                bmat[i][j + keys.length] = (i == j);
-        }
-        Matrices.printMatrix("bmat", bmat);  
-
-        /* convert okbasis to an augmented matrix of booleans *//*
-        boolean[][] bokbasis = new boolean[values.length][okbasis.length + values.length];
-        for(int i = 0; i < values.length; i++) {
-            for(int j = 0; j < okbasis.length; j++)
-                bokbasis[i][j] = okbasis[j].contains(values[i]);
-            for(int j = 0; j < values.length; j++)
-                bokbasis[i][j + okbasis.length] = (i == j);
-        }
-        Matrices.printMatrix("bokbasis", bokbasis);
-
-        /* rref the okbasis *//*
-        int[] okb_leading_cols = Matrices.rref(bokbasis, true);
-        Matrices.printMatrix("rref(bokbasis)", bokbasis);
-
-        /* extract the row op matrix from the augmented part *//*
-        boolean[][] rowop1 = new boolean[values.length][values.length];
-        for(int i = 0; i < values.length; i++)
-            for(int j = 0; j < values.length; j++)
-                rowop1[i][j] = bokbasis[i][j + okbasis.length];
-        Matrices.printMatrix("rowop1", rowop1);
-
-        /* use this to partially rref mat *//*
-        boolean[][] bmatrr = Matrices.mult(rowop1, bmat);
-        Matrices.printMatrix("bmatrr", bmatrr);
-
-        /* finish rrefing mat *//*
-        int[] bmat_leading_cols = Matrices.rref(bmatrr, true);
-        Matrices.printMatrix("rref(bmatrr)", bmatrr);
-
-        /* At this stage, bokbasis has zero lines starting at l1 (excluding the
-         * augmented part), and likewise bmatrr starting at l2 zero lines, where
-         * l2 <= l1. Those lines in the difference correspond to our complement.
-         * To return this complement to the original basis, feed the unit
-         * vectors corresponding to these zero lines into the inverse row
-         * transform matrix.
-         *//*
-
-        /* determine l1, l2 *//*
-        int l1 = okb_leading_cols.length;
-        int l2 = bmat_leading_cols.length;
-        if(DEBUG) System.out.printf("l1: %2d   l2: %2d\n", l1, l2);
-        die_if(l2 > l1, "Unexpected zero-row inequality in calc_gimg()");
-
-        */
-
-        /* NOPE, do it a different way. new code path.
-         * this is a little tighter, and avoids using mult() */
 
         /* construct our huge augmented behemoth */
         int[][] aug = new int[values.length][okbasis.length + keys.length + values.length];
@@ -177,94 +206,22 @@ public class ResMain
     }
 
 
-    /* Main minimal-resolution procedure. */
 
-    static void resolve(AMod a)
+    static void print_result(int s_max)
     {
-
-        for(int t = 0; t <= T_CAP; t++) {
-
-            /* first handle the s=0 case: process the input */
-            /* XXX TMP just using the sphere as input */
-            CellData dat0 = new CellData();
-            dat0.gimg = new DModSet[] {};
-            if(t == 0) {
-                dat0.kbasis = new DModSet[] {};
-            } else {
-                List<DModSet> kbasis0 = new ArrayList<DModSet>();
-                for(Sq q : Sq.steenrod(t)) {
-                    DModSet ms = new DModSet();
-                    ms.add(new Dot(q,0,0), 1);
-                    kbasis0.add(ms);
-                }
-                dat0.kbasis = kbasis0.toArray(new DModSet[] {});
+        for(int s = s_max; s >= 0; s--) {
+            for(int t = s; ; t++) {
+                int n = ngens(s,t);
+                if(n > 0)
+                    System.out.printf("%2d ", ngens(s,t));
+                else if(n == 0)
+                    System.out.print("   ");
+                else break;
             }
-            System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", 0, t, 0, dat0.kbasis.length);
-            output.put(keystr(0,t), dat0);
-
-
-            /* now the typical s>0 case */
-
-            for(int s = 1; s <= t; s++) {
-
-                /* compute the basis for this resolution bidegree */
-                ArrayList<Dot> basis_l = new ArrayList<Dot>();
-                for(int gt = s; gt < t; gt++) {
-                    for(int i = 0; i < ngens(s,gt); i++) {
-                        for(Sq q : Sq.steenrod(t - gt)) {
-                            basis_l.add(new Dot(q,gt,i));
-                        }
-                    }
-                }
-                Dot[] basis = basis_l.toArray(new Dot[]{});
-                DModSet[] okbasis = kbasis(s-1,t);
-
-                /* compute what the map does in this basis */
-                DotMatrix mat = new DotMatrix();
-                if(DEBUG) System.out.printf("(%d,%d) Map:\n",s,t);
-                for(int i = 0; i < basis.length; i++) {
-
-                    /* compute the image of this basis vector */
-                    DModSet image = new DModSet();
-                    for(Map.Entry<Dot,Integer> d : gimg(s,basis[i].t)[basis[i].idx].entrySet()) {
-                        ModSet<Sq> c = basis[i].sq.times(d.getKey().sq);
-                        for(Map.Entry<Sq,Integer> q : c.entrySet())
-                            image.add(new Dot(q.getKey(), d.getKey().t, d.getKey().idx), d.getValue() * q.getValue());
-                    }
-
-                    if(DEBUG) System.out.println("Image of "+basis[i]+" is "+image);
-
-                    mat.put(basis[i], image);
-
-                }
-
-                /* the kernel of mat is kbasis */
-                DModSet[] kbasis = mat.ker();
-                if(DEBUG && kbasis.length != 0) {
-                    System.out.println("Kernel:");
-                    for(DModSet dm : kbasis)
-                        System.out.println(dm);
-                }
-
-
-                /* from mat and okbasis, produce gimg */
-                if(DEBUG) System.out.printf("\ngimg at (%d,%d)\n", s,t);
-                DModSet[] gimg = calc_gimg(mat, okbasis);
-                if(DEBUG) System.out.println();
-
-                System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", s, t, gimg.length, kbasis.length);
-                if(DEBUG && gimg.length > 0) {
-                    System.out.println("Generators:");
-                    for(DModSet g : gimg) System.out.println(g);
-                }
-                if(DEBUG) System.out.println();
-                output.put(keystr(s,t), new CellData(gimg, kbasis));
-
-                /* XXX */
-                /* display.repaint(); */
-            }
+            System.out.println("###");
         }
     }
+
 
 
     static void die_if(boolean test, String fail)
@@ -281,20 +238,9 @@ public class ResMain
     public static void main(String[] args)
     {
         /* tests */
-/*        System.out.println("Steenrod:");
-        for(int i = 0; i < 30; i++) {
-            System.out.printf("%2d: ",i);
-            for(Sq q : Sq.steenrod(i)) {
-                System.out.print(q);
-                System.out.print(" ");
-            }
-            System.out.println();
-        }
-        Sq p2 = new Sq(new int[] {8});
-        Sq bp1 = new Sq(new int[] {5});
-        System.out.println("P2BP1: " + p2.times(bp1)); */
 
         /* init */
+
         /* make the sphere A-module */
 
         /* resolve */
@@ -302,16 +248,7 @@ public class ResMain
 
         /* print */
         System.out.println("Conclusion:");
-        for(int s = T_CAP - 1; s >= 0; s--) {
-            for(int t = s; t <= T_CAP; t++) {
-                int n = ngens(s,t);
-                if(n > 0)
-                    System.out.printf("%2d ", ngens(s,t));
-                else System.out.print("   ");
-            }
-            System.out.println("###");
-        }
-
+        print_result(T_CAP);
     }
 
 }
@@ -758,7 +695,7 @@ class Matrices
 
     static void printMatrix(String name, int[][] mat)
     {
-        if(!ResMain.DEBUG) return;
+        if(!ResMain.MATRIX_DEBUG) return;
 
         System.out.print(name + ":");
         if(mat.length == 0) {
