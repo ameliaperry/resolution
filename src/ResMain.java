@@ -337,9 +337,10 @@ class Sq
                 Mod 2, i indicates Sq^i.
                 Mod p>2, 2k(p-1) indicates P^i, 2k(p-1)+1 indicates B P^i. */
 
-    Sq(int[] qq) { q = qq; }
 
-    ModSet<Sq> times(Sq o)
+    public Sq(int[] qq) { q = qq; }
+
+    public ModSet<Sq> times(Sq o)
     {
         int[] ret = new int[q.length + o.q.length];
         for(int i = 0; i < q.length; i++)
@@ -347,13 +348,13 @@ class Sq
         for(int i = 0; i < o.q.length; i++)
             ret[q.length + i] = o.q[i];
 
-        if(Math.P == 2 && !MICHAEL_MODE)
+        if(Math.P == 2 && !ResMain.MICHAEL_MODE)
             return new Sq(ret).resolve_2();
         else
             return new Sq(ret).resolve_p();
     }
 
-    ModSet<Sq> resolve_2()
+    private ModSet<Sq> resolve_2()
     {
         ModSet<Sq> ret = new ModSet<Sq>();
 
@@ -395,7 +396,7 @@ class Sq
         return ret;
     }
 
-    ModSet<Sq> resolve_p()
+    private ModSet<Sq> resolve_p()
     {
         ModSet<Sq> ret = new ModSet<Sq>();
         int Q = 2 * (Math.P - 1); /* convenience */
@@ -485,7 +486,7 @@ class Sq
 
 
     /* The Steenrod algebra. */
-    static Iterable<Sq> steenrod(int n)
+    public static Iterable<Sq> steenrod(int n)
     {
         Iterable<int[]> p;
         if(Math.P == 2) p = part_2(n,n);
@@ -498,12 +499,12 @@ class Sq
         return ret;
     }
 
-    static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
-    static String part_cache_keystr(int n, int max) {
+    private static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
+    private static String part_cache_keystr(int n, int max) {
         return "("+n+"/"+max+"/"+Math.P+")";
     }
 
-    static Iterable<int[]> part_2(int n, int max)
+    private static Iterable<int[]> part_2(int n, int max)
     {
         if(n == 0) { /* the trivial solution */
             Collection<int[]> ret = new ArrayList<int[]>();
@@ -531,7 +532,7 @@ class Sq
         return ret;
     }
 
-    static Iterable<int[]> part_p(int n, int max)
+    private static Iterable<int[]> part_p(int n, int max)
     {
         if(n == 0) { /* the trivial solution */
             Collection<int[]> ret = new ArrayList<int[]>();
