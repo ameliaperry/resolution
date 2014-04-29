@@ -13,6 +13,11 @@ public class ResMain
     static final boolean MATRIX_DEBUG = false;
     static final boolean MICHAEL_MODE = true;
 
+    static final Sq P1 = new Sq(new int[] {2});
+    static final Sq P1B = new Sq(new int[] {2,1});
+    static final Sq P2 = new Sq(new int[] {4});
+    static final Sq P3 = new Sq(new int[] {6});
+
     static HashMap<String,CellData> output = new HashMap<String,CellData>();
     static String keystr(int s, int t) {
         return "("+s+","+t+","+Math.P+")";
@@ -23,6 +28,16 @@ public class ResMain
         CellData dat = output.get(keystr(s,t));
         if(dat == null) return -1;
         return dat.gimg.length;
+    }
+    static int nhidden(int s, int t) {
+        CellData dat = output.get(keystr(s,t));
+        if(dat == null) return -1;
+        return dat.hidden;
+    }
+    static boolean[] hiddens(int s, int t) {
+        CellData dat = output.get(keystr(s,t));
+        die_if(dat == null, "Data null in ("+s+","+t+")");
+        return dat.hiddens;
     }
     static DModSet[] kbasis(int s, int t) {
         CellData dat = output.get(keystr(s,t));
@@ -50,6 +65,7 @@ public class ResMain
             /* XXX TMP just using the sphere as input */
             CellData dat0 = new CellData();
             dat0.gimg = new DModSet[] {};
+            dat0.hiddens = new boolean[] { false };
             if(t == 0) {
                 dat0.kbasis = new DModSet[] {};
             } else {
@@ -120,6 +136,31 @@ public class ResMain
                     System.out.println("Generators:");
                     for(DModSet g : dat.gimg) System.out.println(g);
                 }
+
+                /* figure out how many gimg elements are to be "hidden" */
+                /* XXX TMP */
+                dat.hiddens = new boolean[dat.gimg.length];
+                if(MICHAEL_MODE) {
+                    for(int l = 0; l < dat.gimg.length; l++) {
+                        DModSet g = dat.gimg[l];
+                        boolean nonfunky_occured = false;
+                        for(Dot d : g.keySet()) {
+                            System.out.println(d.sq);
+                            if(d.sq.equals(P1) || hiddens(s-1,d.t)[d.idx]) {
+                            } else {
+                                System.out.println("nonfunky occured: "+d.sq);
+                                nonfunky_occured = true;
+                                break;
+                            }
+                        }
+                        if(! nonfunky_occured) {
+                            dat.hiddens[l] = true;
+                            dat.hidden++;
+                            System.out.println("funky element");
+                        }
+                    }
+                }
+
                 print_result(t);
                 System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", s, t, dat.gimg.length, dat.kbasis.length);
                 System.out.println();
@@ -253,12 +294,15 @@ public class ResMain
     {
         for(int s = s_max; s >= 0; s--) {
             for(int t = s; ; t++) {
-                int n = ngens(s,t);
+                int ng = ngens(s,t);
+                if(ng < 0) break;
+                int n = ng - nhidden(s,t); /* TMP XXX */
                 if(n > 0)
-                    System.out.printf("%2d ", ngens(s,t));
-                else if(n == 0)
+                    System.out.printf("%2d ", n);
+                else if(ng > 0)
+                    System.out.print(" ` ");
+                else
                     System.out.print("   ");
-                else break;
             }
             System.out.println("###");
         }
@@ -300,6 +344,8 @@ class CellData
 {
     DModSet[] gimg; /* images of generators as dot-sums in bidegree s-1,t*/
     DModSet[] kbasis; /* kernel basis dot-sums in bidegree s,t */
+    boolean[] hiddens;
+    int hidden = 0;
 
     CellData() { }
     CellData(DModSet[] g, DModSet[] k) {
@@ -688,6 +734,10 @@ class ModSet<T> extends HashMap<T,Integer>
 }
 
 class DModSet extends ModSet<Dot> { /* to work around generic array restrictions */
+    DModSet() {}
+    DModSet(Dot d) {
+        add(d,1);
+    }
     public Dot[] toArray() {
         return keySet().toArray(new Dot[] {});
     }
