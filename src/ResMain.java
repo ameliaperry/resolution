@@ -74,47 +74,54 @@ public class ResMain
                 for(int gt = s; gt < t; gt++) {
                     for(int i = 0; i < ngens(s,gt); i++) {
                         for(Sq q : Sq.steenrod(t - gt)) {
-                            basis_l.add(new Dot(q,gt,i));
+                            Dot dot = new Dot(q,gt,i);
+                            basis_l.add(dot);
                         }
                     }
                 }
-                Dot[] basis = basis_l.toArray(new Dot[]{});
                 DModSet[] okbasis = kbasis(s-1,t);
 
-                /* compute what the map does in this basis */
+                /* compute what the map does in this basis. this takes maybe 10% of the running time */
                 DotMatrix mat = new DotMatrix();
                 if(DEBUG) System.out.printf("(%d,%d) Map:\n",s,t);
 
-                for(int i = 0; i < basis.length; i++) {
+                Collection<DModSet> easy_ker = new ArrayList<DModSet>();
+                for(Dot dot : basis_l) {
                     /* compute the image of this basis vector */
                     DModSet image = new DModSet();
-                    for(Map.Entry<Dot,Integer> d : gimg(s,basis[i].t)[basis[i].idx].entrySet()) {
-                        ModSet<Sq> c = basis[i].sq.times(d.getKey().sq);
+                    for(Map.Entry<Dot,Integer> d : gimg(s, dot.t)[dot.idx].entrySet()) {
+                        ModSet<Sq> c = dot.sq.times(d.getKey().sq);
                         for(Map.Entry<Sq,Integer> q : c.entrySet())
                             image.add(new Dot(q.getKey(), d.getKey().t, d.getKey().idx), d.getValue() * q.getValue());
                     }
 
-                    if(DEBUG) System.out.println("Image of "+basis[i]+" is "+image);
+                    if(DEBUG) System.out.println("Image of "+dot+" is "+image);
 
-                    mat.put(basis[i], image);
+                    if(image.isEmpty()) {
+                        easy_ker.add(new DModSet(dot));
+                    } else { /* have to do actual linear algebra ... */
+                        mat.put(dot, image);
+                    }
                 }
 
-                /* the kernel of mat is kbasis */
-                DModSet[] kbasis = mat.ker();
-
-
-                /* from mat and okbasis, produce gimg */
-                if(DEBUG) System.out.printf("\ngimg at (%d,%d)\n", s,t);
-                DModSet[] gimg = calc_gimg(mat, okbasis);
-                if(DEBUG) System.out.println();
-
-                output.put(keystr(s,t), new CellData(gimg, kbasis));
-                if(DEBUG && gimg.length > 0) {
+                /* OK, do all the heavy lifting = linear algebra. timesuck */
+                CellData dat = calc_gimg(mat, okbasis);
+                output.put(keystr(s,t), dat);
+                
+                /* add in the "easy" elements */
+                DModSet[] newkbasis = Arrays.copyOf(dat.kbasis, dat.kbasis.length + easy_ker.size());
+                int i = 0; 
+                for(DModSet k : easy_ker)
+                    newkbasis[dat.kbasis.length + (i++)] = k;
+                dat.kbasis = newkbasis;
+                
+                /* list generators */
+                if(dat.gimg.length > 0) {
                     System.out.println("Generators:");
-                    for(DModSet g : gimg) System.out.println(g);
+                    for(DModSet g : dat.gimg) System.out.println(g);
                 }
                 print_result(t);
-                System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", s, t, gimg.length, kbasis.length);
+                System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", s, t, dat.gimg.length, dat.kbasis.length);
                 System.out.println();
             }
         }
@@ -124,7 +131,7 @@ public class ResMain
     
     /* Computes a basis complement to the image of mat inside the span of okbasis */
 
-    static DModSet[] calc_gimg(DotMatrix mat, DModSet[] okbasis)
+    static CellData calc_gimg(DotMatrix mat, DModSet[] okbasis)
     {
         /* sketch idea:
          * do RREF on okbasis.
@@ -135,7 +142,15 @@ public class ResMain
          * transform back
          *
          * To do this more efficiently, we basically rref a huge augmentation: bokbasis | mat | id.
+         *
+         * The code for computing the kernel of mat was merged into this function (since
+         * it was basically doing all the same computations), so this function now does
+         * all of the interesting linear algebra.
+         *
+         * Probably the last step of inverting a matrix via RREF could be sped up by keeping better
+         * track of row operations used in earlier steps...
          */
+        CellData ret = new CellData();
 
         /* choose an ordering on all keys and values */
         Dot[] keys = mat.keySet().toArray(new Dot[] {});
@@ -144,6 +159,7 @@ public class ResMain
             val_set.union(ms);
         if(DEBUG) System.out.println("val_set: "+val_set);
         Dot[] values = val_set.toArray(); 
+        System.out.printf("o:%d k:%d v:%d\n", okbasis.length, keys.length, values.length);
 
         /* construct our huge augmented behemoth */
         int[][] aug = new int[values.length][okbasis.length + keys.length + values.length];
@@ -169,33 +185,63 @@ public class ResMain
         Matrices.printMatrix("bmatrr", bmatrr);
 
         /* rref it some more */
-        int l2 = Matrices.rref(bmatrr, values.length).length;
+        int[] bmatrr_leads = Matrices.rref(bmatrr, values.length);
+        int l2 = bmatrr_leads.length;
         Matrices.printMatrix("rref(bmatrr)", bmatrr);
         if(DEBUG) System.out.printf("l1: %2d   l2: %2d\n", l1, l2);
 
+        /* read out the kernel */
+        List<DModSet> ker = new ArrayList<DModSet>();
 
-        /* now we're back to the old code path */
-        
-        /* extract and invert (via rref) the row transform matrix */
+        int idx = 0;
+        for(int j = 0; j < keys.length; j++) {
+
+            /* keep an eye out for leading ones and skip them */
+            if(idx < bmatrr_leads.length && bmatrr_leads[idx] == j) {
+                idx++;
+                continue;
+            }
+
+            /* not a leading column, so we obtain a kernel element */
+            DModSet ms = new DModSet();
+            ms.add(keys[j], 1);
+            for(int i = 0; i < values.length; i++) {
+                if(bmatrr[i][j] != 0) {
+                    ResMain.die_if(i >= bmatrr_leads.length, "bad rref: no leading one");
+                    ms.add(keys[bmatrr_leads[i]], -bmatrr[i][j]);
+                }
+            }
+
+            ker.add(ms);
+        }
+        ret.kbasis = ker.toArray(new DModSet[]{});
+
+        if(ResMain.DEBUG && ker.size() != 0) {
+            System.out.println("Kernel:");
+            for(DModSet dm : ret.kbasis)
+                System.out.println(dm);
+        }
+
+
+        /* extract and invert (via rref, tracking only the relevant part) the row transform matrix */
         int[][] transf = new int[values.length][2 * values.length];
         for(int i = 0; i < values.length; i++) {
             for(int j = 0; j < values.length; j++)
                 transf[i][j] = bmatrr[i][j + keys.length];
-            for(int j = 0; j < values.length; j++)
-                transf[i][j + values.length] = (i == j ? 1 : 0);
+            for(int j = 0; j < l1 - l2; j++)
+                transf[i][j + values.length] = (i == j + l2 ? 1 : 0);
         }
         Matrices.printMatrix("transf", transf);
         Matrices.rref(transf, values.length);
         Matrices.printMatrix("rref(transf)", transf); 
 
         /* read off the output */
-        DModSet[] ret = new DModSet[l1 - l2];
-        for(int j = l2; j < l1; j++) {
+        ret.gimg = new DModSet[l1 - l2];
+        for(int j = 0; j < l1 - l2; j++) {
             DModSet out = new DModSet();
-            for(int i = 0; i < values.length; i++) {
+            for(int i = 0; i < values.length; i++)
                 out.add(values[i], transf[i][j + values.length]);
-            }
-            ret[j - l2] = out;
+            ret.gimg[j] = out;
         }
 
         return ret;
@@ -588,6 +634,7 @@ class Sq
 }
 
 
+/* A formal F_p-linear combination of things of type T. */
 class ModSet<T> extends HashMap<T,Integer>
 {
     public void add(T d, int mult)
@@ -650,27 +697,25 @@ class DModSet extends ModSet<Dot> { /* to work around generic array restrictions
 
 class Matrices
 {
-    /* Static matrix operation methods.
-     * It should be noted that matrices are assumed to be reduced to lowest
-     * positive residues (mod p), and these operations respect that. */
-
     /* row-reduces a matrix (in place).
-     * returns an array giving the column position of the leading 1 in each row */
+     * Returns an array giving the column position of the leading 1 in each row. 
+     * It should be noted that matrices are assumed to be reduced to lowest
+     * non-negative residues (mod p), and this operation respects that. */
     static int[] rref(int[][] mat, int preserve_right)
     {
         if(mat.length == 0)
             return new int[] {};
 
-        int good_rows = 0;
-        int[] leading_cols = new int[mat.length];
-        for(int j = 0; j < mat[0].length - preserve_right; j++) {
-            int i;
-            for(i = good_rows; i < mat.length; i++) {
-                if(mat[i][j] != 0) break;
-            }
-            if(i == mat.length) continue;
+        int h = mat.length;
+        int w = mat[0].length;
 
-            //Matrices.printMatrix("rref 0", mat);
+        int good_rows = 0;
+        int[] leading_cols = new int[h];
+        for(int j = 0; j < w - preserve_right; j++) {
+            /* find the first nonzero entry in this column */
+            int i;
+            for(i = good_rows; i < h && mat[i][j] == 0; i++);
+            if(i == h) continue;
 
             /* swap the rows */
             int[] row = mat[good_rows];
@@ -678,25 +723,29 @@ class Matrices
             mat[i] = row;
             i = good_rows++;
             leading_cols[i] = j;
-            
-            //Matrices.printMatrix("rref 1", mat);
 
             /* normalize the row */
             int inv = Math.inverse[mat[i][j]];
-            for(int k = 0; k < mat[0].length; k++)
+            for(int k = h; k < w; k++)
                 mat[i][k] = (mat[i][k] * inv) % Math.P;
-            
-            //Matrices.printMatrix("rref 2", mat);
 
-            /* clear the rest of the column */
-            for(int k = 0; k < mat.length; k++) {
-                if(k == i) continue;
-                int mul = Math.P - mat[k][j];
-                if(mul == Math.P) continue;
-                for(int l = 0; l < mat[0].length; l++)
-                    mat[k][l] = (mat[k][l] + mat[i][l] * mul) % Math.P;
+            /* clear the rest of the column. this part is cubic-time so we optimize P=2 */
+            if(Math.P == 2) {
+                for(int k = 0; k < h; k++) {
+                    if(mat[k][j] == 0) continue;
+                    if(k == i) continue;
+                    for(int l = 0; l < w; l++)
+                        mat[k][l] ^= mat[i][l];
+                }
+            } else {
+                for(int k = 0; k < h; k++) {
+                    if(mat[k][j] == 0) continue;
+                    if(k == i) continue;
+                    int mul = Math.P - mat[k][j];
+                    for(int l = 0; l < w; l++)
+                        mat[k][l] = (mat[k][l] + mat[i][l] * mul) % Math.P;
+                }
             }
-            //Matrices.printMatrix("rref 3", mat);
         }
 
         return Arrays.copyOf(leading_cols, good_rows);
@@ -719,73 +768,13 @@ class Matrices
                 System.out.printf("%2d ", mat[i][j]);
         }
         System.out.println();
-
     }
 }
 
 
 class DotMatrix extends HashMap<Dot,DModSet>
 {
-
-    DModSet[] ker()
-    {
-        /* choose an ordering on all keys and values */
-        Dot[] keys = keySet().toArray(new Dot[]{});
-        DModSet val_set = new DModSet();
-        for(DModSet ms : values()) 
-            val_set.union(ms);
-        Dot[] values = val_set.toArray();
-
-        if(ResMain.DEBUG) System.out.printf("ker(): %d x %d\n", values.length, keys.length);
-
-        /* convert to a matrix of ints */
-        int[][] mat = new int[values.length][keys.length];
-        for(int i = 0; i < values.length; i++)
-            for(int j = 0; j < keys.length; j++)
-                mat[i][j] = Math.dmod(get(keys[j]).getsafe(values[i]));
-
-        Matrices.printMatrix("mat", mat);
-
-        /* convert to row-reduced echelon form */
-        int[] leading_cols = Matrices.rref(mat, 0);
-        Matrices.printMatrix("rref(mat)", mat);
-
-        /* read out the kernel */
-        int idx = 0;
-        List<DModSet> ker = new ArrayList<DModSet>();
-
-        for(int j = 0; j < keys.length; j++) {
-
-            /* keep an eye out for leading ones and skip them */
-            if(idx < leading_cols.length && leading_cols[idx] == j) {
-                idx++;
-                continue;
-            }
-
-            /* not a leading column, so we obtain a kernel element */
-            DModSet ms = new DModSet();
-            ms.add(keys[j], 1);
-            for(int i = 0; i < values.length; i++) {
-                if(mat[i][j] != 0) {
-                    ResMain.die_if(i >= leading_cols.length, "bad rref: no leading one");
-                    ms.add(keys[leading_cols[i]], -mat[i][j]);
-                }
-            }
-
-            ker.add(ms);
-        }
-                
-        if(ResMain.DEBUG && ker.size() != 0) {
-            System.out.println("Kernel:");
-            for(DModSet dm : ker)
-                System.out.println(dm);
-        }
-
-        return ker.toArray(new DModSet[]{});
-    }
-
 }
-
 
 
 class AMod
