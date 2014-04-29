@@ -100,11 +100,6 @@ public class ResMain
 
                 /* the kernel of mat is kbasis */
                 DModSet[] kbasis = mat.ker();
-                if(DEBUG && kbasis.length != 0) {
-                    System.out.println("Kernel:");
-                    for(DModSet dm : kbasis)
-                        System.out.println(dm);
-                }
 
 
                 /* from mat and okbasis, produce gimg */
@@ -433,10 +428,7 @@ class Sq
                 }
                 else if(rx == 1 && ry == 1) {
                     resolve_p_add_term(-sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P-1), (a+b-c)*Q+1, c*Q+1, i, ret);
-                } else {
-                    System.err.println("Bad Adem case");
-                    System.exit(1);
-                }
+                } else ResMain.die_if(true, "Bad Adem case.");
                        
             }
 
@@ -764,6 +756,12 @@ class DotMatrix extends HashMap<Dot,DModSet>
 
             ker.add(ms);
         }
+                
+        if(ResMain.DEBUG && ker.size() != 0) {
+            System.out.println("Kernel:");
+            for(DModSet dm : ker)
+                System.out.println(dm);
+        }
 
         return ker.toArray(new DModSet[]{});
     }
@@ -774,6 +772,6 @@ class DotMatrix extends HashMap<Dot,DModSet>
 
 class AMod
 {
-
+    /* TODO encode a general A-module and be able to resolve it */
 }
 
