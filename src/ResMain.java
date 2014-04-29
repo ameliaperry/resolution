@@ -446,13 +446,14 @@ class Sq
             return new Sq(ret).resolve_p();
     }
 
-    private static Map<String,ModSet<Sq>> resolve_cache = new HashMap<String,ModSet<Sq>>();
+//    private static Map<String,ModSet<Sq>> resolve_cache = new HashMap<String,ModSet<Sq>>();
     private ModSet<Sq> resolve_2()
     {
-        String key = toString();
-        ModSet<Sq> ret = resolve_cache.get(key);
-        if(ret != null)
-            return ret;
+        ModSet<Sq> ret;
+//        String key = toString();
+//        ret = resolve_cache.get(key);
+//        if(ret != null)
+//            return ret;
 
         ret = new ModSet<Sq>();
 
@@ -486,22 +487,24 @@ class Sq
                     ret.add(sub.getKey(), sub.getValue());
             }
 
-            resolve_cache.put(key, ret);
+//            resolve_cache.put(key, ret);
             return ret;
         }
 
         /* all clear */
         ret.add(this, 1);
-        resolve_cache.put(key, ret);
+//        resolve_cache.put(key, ret);
         return ret;
     }
 
     private ModSet<Sq> resolve_p()
     {
-        String key = toString();
-        ModSet<Sq> ret = resolve_cache.get(key);
-        if(ret != null)
-            return ret;
+        ModSet<Sq> ret;
+
+//        String key = toString();
+//        ModSet<Sq> ret = resolve_cache.get(key);
+//        if(ret != null)
+//            return ret;
 
         ret = new ModSet<Sq>();
         
@@ -540,13 +543,13 @@ class Sq
                        
             }
 
-            resolve_cache.put(key, ret);
+//            resolve_cache.put(key, ret);
             return ret;
         }
 
         /* all clear */
         ret.add(this, 1);
-        resolve_cache.put(key, ret);
+//        resolve_cache.put(key, ret);
         return ret;
     }
 
