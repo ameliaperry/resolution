@@ -20,7 +20,7 @@ public class ResMain
 
     static HashMap<String,CellData> output = new HashMap<String,CellData>();
     static String keystr(int s, int t) {
-        return "("+s+","+t+","+Math.P+")";
+        return s+","+t;
     }
 
     /* convenience methods for cell data lookup */
@@ -398,7 +398,7 @@ class Math
     }
 
     static Map<String,Integer> binom_cache = new HashMap<String,Integer>();
-    static String binom_cache_str(int a, int b) { return "("+a+"///"+b+"///"+Math.P+")"; }
+    static String binom_cache_str(int a, int b) { return a+"/"+b; }
     static int binom_p(int a, int b)
     {
         String s = binom_cache_str(a,b);
