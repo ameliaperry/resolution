@@ -1,5 +1,5 @@
 #!/bin/sh
 
 cd sandbox
-java -jar resolution.jar
+java -Xmx1024M -jar resolution.jar
 cd ..
