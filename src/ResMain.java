@@ -354,9 +354,15 @@ class Sq
             return new Sq(ret).resolve_p();
     }
 
+    private static Map<String,ModSet<Sq>> resolve_cache = new HashMap<String,ModSet<Sq>>();
     private ModSet<Sq> resolve_2()
     {
-        ModSet<Sq> ret = new ModSet<Sq>();
+        String key = toString();
+        ModSet<Sq> ret = resolve_cache.get(key);
+        if(ret != null)
+            return ret;
+
+        ret = new ModSet<Sq>();
 
         for(int i = q.length - 2; i >= 0; i--) {
             int a = q[i];
@@ -388,17 +394,25 @@ class Sq
                     ret.add(sub.getKey(), sub.getValue());
             }
 
+            resolve_cache.put(key, ret);
             return ret;
         }
 
         /* all clear */
         ret.add(this, 1);
+        resolve_cache.put(key, ret);
         return ret;
     }
 
     private ModSet<Sq> resolve_p()
     {
-        ModSet<Sq> ret = new ModSet<Sq>();
+        String key = toString();
+        ModSet<Sq> ret = resolve_cache.get(key);
+        if(ret != null)
+            return ret;
+
+        ret = new ModSet<Sq>();
+        
         int Q = 2 * (Math.P - 1); /* convenience */
 
         for(int i = q.length - 2; i >= 0; i--) {
@@ -428,17 +442,19 @@ class Sq
                     resolve_p_add_term(sign*Math.binom_p((Math.P-1)*(b-c),a-c*Math.P), (a+b-c)*Q+1, c*Q, i, ret);
                     resolve_p_add_term(-sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P-1), (a+b-c)*Q, c*Q+1, i, ret);
                 }
-                else if(rx == 1 && ry == 1) {
+                else if(rx == 1 && ry == 1)
                     resolve_p_add_term(-sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P-1), (a+b-c)*Q+1, c*Q+1, i, ret);
-                } else ResMain.die_if(true, "Bad Adem case.");
+                else ResMain.die_if(true, "Bad Adem case.");
                        
             }
 
+            resolve_cache.put(key, ret);
             return ret;
         }
 
         /* all clear */
         ret.add(this, 1);
+        resolve_cache.put(key, ret);
         return ret;
     }
 
