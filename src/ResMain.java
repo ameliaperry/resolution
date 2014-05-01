@@ -20,6 +20,8 @@ public class ResMain
     static final Sq P2 = new Sq(new int[] {4});
     static final Sq P3 = new Sq(new int[] {6});
 
+    static PingListener listener = null;
+
     static HashMap<String,CellData> output = new HashMap<String,CellData>();
     static String keystr(int s, int t) {
         return s+","+t;
@@ -189,6 +191,8 @@ public class ResMain
 
                 print_result(t);
                 if(STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gimg.length, dat.kbasis.length);
+                if(listener != null)
+                    listener.ping();
             }
 
             if(TIMING && t >= 1) {
@@ -363,6 +367,11 @@ public class ResMain
         }
     }
 
+
+    public static void register_listener(PingListener p)
+    {
+        listener = p;
+    }
 
     public static void main(String[] args)
     {
@@ -918,5 +927,9 @@ class DotMatrix extends HashMap<Dot,DModSet>
 class AMod
 {
     /* TODO encode a general A-module and be able to resolve it */
+}
+
+interface PingListener {
+    void ping();
 }
 
