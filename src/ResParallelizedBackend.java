@@ -31,6 +31,7 @@ class ResParallelizedBackend implements ResBackend
         return dat.gens;
     }
     @Override public boolean isComputed(int s, int t) {
+        if(s < 0) return true;
         return output.containsKey(keystr(s,t));
     }
 
@@ -46,7 +47,7 @@ class ResParallelizedBackend implements ResBackend
 
         tasks = new PriorityBlockingQueue<ResTask>();
         claims = new HashSet<String>();
-        putTask(true, new ResTask(ResTask.COMPUTE, 0, 0));
+        putTask(new ResTask(ResTask.COMPUTE, 0, 0));
 
         for(int i = 0; i < Config.THREADS; i++)
             new ResTaskThread(this).start();
@@ -64,15 +65,10 @@ class ResParallelizedBackend implements ResBackend
         return true;
     }
     
-    void putTask(boolean first, ResTask t)
+    void putTask(ResTask t)
     {
         while(true) {
             try {
-                
-                /*if(first)
-                    tasks.putFirst(t);
-                else
-                    tasks.putLast(t); */
                 tasks.put(t);
                 return;
             } catch(InterruptedException e) {
@@ -81,42 +77,9 @@ class ResParallelizedBackend implements ResBackend
         }
     }
 
-    /* first handle the s=0 case: kludge a start */
-    void compute0(int t) 
-    {
-        System.out.printf("compute0(%d,%d)\n",0,t);
 
-        CellData dat0 = new CellData();
-        if(t == 0) {
-            dat0.gens = new Dot[] { new Dot(0,0,0) };
-            dat0.kbasis = new DModSet[] {};
-        } else {
-            Dot bottom_dot = gens(0,0)[0];
-
-            dat0.gens = new Dot[] {};
-            List<DModSet> kbasis0 = new ArrayList<DModSet>();
-            for(Sq q : Sq.steenrod(t)) {
-                DModSet ms = new DModSet();
-                ms.add(new Dot(bottom_dot, q), 1);
-                kbasis0.add(ms);
-            }
-            dat0.kbasis = kbasis0.toArray(new DModSet[] {});
-        }
-        if(Config.STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", 0, t, 0, dat0.kbasis.length);
-        output.put(keystr(0,t), dat0);
-
-        if(t != 0 && (t == 1 || isComputed(1,t-1)))
-            if(atomic_claim_grid(1,t))
-                putTask(true, new ResTask(ResTask.COMPUTE, 1, t)); /* move up-left */
-        putTask(false, new ResTask(ResTask.COMPUTE, 0, t+1)); /* move right */
-    }
-
-
-    /* now the typical s>0 case */
     void compute(int s, int t)
     {
-        System.out.printf("compute(%d,%d)\n",s,t);
-
         /* compute the basis for this resolution bidegree */
         ArrayList<Dot> basis_l = new ArrayList<Dot>();
         for(int gt = s; gt < t; gt++)
@@ -125,7 +88,13 @@ class ResParallelizedBackend implements ResBackend
                     basis_l.add(new Dot(d,q));
 
         /* get the old kernel basis */
-        DModSet[] okbasis = kbasis(s-1,t);
+        DModSet[] okbasis;
+        if(s == 0 && t == 0)
+            okbasis = new DModSet[] { new DModSet(new Dot(0,0,0)) };
+        else if(s == 0)
+            okbasis = new DModSet[] {};
+        else
+            okbasis = kbasis(s-1,t);
 
         /* compute what the map does in this basis. this takes maybe 10% of the running time */
         DotMatrix mat = new DotMatrix();
@@ -187,10 +156,10 @@ class ResParallelizedBackend implements ResBackend
 
         if(s < t && (t == s+1 || isComputed(s+1, t-1))) 
             if(atomic_claim_grid(s+1,t))
-                putTask(true, new ResTask(ResTask.COMPUTE, s+1, t)); /* move up-left */
+                putTask(new ResTask(ResTask.COMPUTE, s+1, t)); /* move up-left */
         if(isComputed(s-1, t+1))
             if(atomic_claim_grid(s,t+1))
-                putTask(false, new ResTask(ResTask.COMPUTE, s, t+1)); /* move right */
+                putTask(new ResTask(ResTask.COMPUTE, s, t+1)); /* move right */
     }
     
     
@@ -374,7 +343,6 @@ class ResTaskThread extends Thread
             if(Config.DEBUG_THREADS) System.out.println(id + ": Waiting for task...");
             ResTask t;
             try {
-//                t = back.tasks.takeFirst();
                 t = back.tasks.take();
             } catch(InterruptedException e) {
                 continue;
@@ -386,10 +354,7 @@ class ResTaskThread extends Thread
 
             switch(t.type) {
                 case ResTask.COMPUTE:
-                    if(t.s == 0)
-                        back.compute0(t.t);
-                    else
-                        back.compute(t.s,t.t);
+                    back.compute(t.s,t.t);
                     break;
                 default:
                     Main.die_if(true, "Bad task type.");
