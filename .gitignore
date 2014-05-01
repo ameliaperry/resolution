@@ -2,3 +2,4 @@ bin/
 sandbox/
 *.swp
 resolution.jar
+refs/
