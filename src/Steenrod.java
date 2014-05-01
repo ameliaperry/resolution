@@ -2,12 +2,31 @@ import java.util.*;
 
 class Sq
 {
+    public static final Sq ID = new Sq(new int[] {});
+
     int[] q; /* Indices of the power operations.
                 Mod 2, i indicates Sq^i.
                 Mod p>2, 2k(p-1) indicates P^i, 2k(p-1)+1 indicates B P^i. */
 
 
     public Sq(int[] qq) { q = qq; }
+
+    
+    public boolean containsBeta()
+    {
+        for(int i : q)
+            if(i % Config.P != 0)
+                return true;
+        return false;
+    }
+
+    public int deg()
+    {
+        int deg = 0;
+        for(int i : q)
+            deg += i;
+        return deg;
+    }
 
     public ModSet<Sq> times(Sq o)
     {

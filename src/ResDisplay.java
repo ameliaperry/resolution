@@ -75,16 +75,12 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
 
                 TreeSet<Integer> nov = new TreeSet<Integer>();
                 int degree = 0;
-                int[] gr = backend.novikov_grading(y, x+y);
-                if(gr != null) {
-                    for(int i : gr) {
-                        if(i >= min_filt && i <= max_filt) {
-                            degree++;
-                            if(i != max_filt) nov.add(i+1);
-                        }
+                Dot[] gens = backend.gens(y, x+y);
+                for(Dot d : gens) {
+                    if(d.nov == -1 || (d.nov >= min_filt && d.nov <= max_filt)) {
+                        degree++;
+                        if(d.nov != -1 && d.nov != max_filt) nov.add(d.nov+1);
                     }
-                } else {
-                    degree = backend.gimg(y, x+y).length;
                 }
                 if(degree > 0)
                     g.drawString("" + degree, cx-3, cy+5);
@@ -92,11 +88,12 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
                 /* draw potential alg Novikov differentials */
                 if(diff && ! nov.isEmpty()) {
                     for(int j = 2; ; j++) {
-                        int[] ogr = backend.novikov_grading(y+j, x-1+y+j);
-                        if(ogr == null) break;
+                        if(! backend.isComputed(y+j, x-1 + y+j))
+                            break;
+                        Dot[] ogen = backend.gens(y+j, x-1 + y+j);
                         boolean found = false;
-                        for(int i : ogr)
-                            if(nov.contains(i))
+                        for(Dot d : ogen)
+                            if(nov.contains(d.nov))
                                found = true; 
                         if(!found) continue;
                         g.setColor(Color.green);
@@ -106,11 +103,11 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
 
                 /* draw potential Cartan differentials */
                 if(cartdiff && ! nov.isEmpty()) {
-                    int[] ogr = backend.novikov_grading(y+1, x+y);
-                    if(ogr != null && ogr.length > 0) {
+                    Dot[] ogen = backend.gens(y+1, y+1 + x-1);
+                    if(ogen != null && ogen.length > 0) {
                         boolean found = false;
-                        for(int i : ogr) {
-                            if(i >= nov.first() + 1) {
+                        for(Dot d : ogen) {
+                            if(d.nov >= nov.first() + 1) {
                                 found = true;
                                 break;
                             }
@@ -122,6 +119,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
                     }
                 }
 
+
             }
         }
 
@@ -132,21 +130,20 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
         if(x < 0 || y < 0)
             textarea.setText("");
         
-        DModSet[] gimg = backend.gimg(y,x+y);
-        int[] nov = backend.novikov_grading(y,x+y);
-        if(gimg == null)
+        Dot[] gens = backend.gens(y,x+y);
+        if(gens == null)
             return;
         String ret = "("+x+","+y+")\n";
-        if(gimg.length > 0) {
+        if(gens.length > 0) {
             ret += "Generators:\n";
-            for(int i = 0; i < gimg.length; i++) {
-                if(nov != null && (nov[i] > max_filt || nov[i] < min_filt))
+            for(Dot d : gens) {
+                if(d.nov != -1 && (d.nov > max_filt || d.nov < min_filt))
                     continue;
-                ret += "("+x+";"+i+")";
-                if(nov != null)
-                    ret += "(n="+nov[i]+")";
+                ret += "("+x+";"+d.idx+")";
+                if(d.nov != -1)
+                    ret += "(n="+d.nov+")";
                 ret += ":\n      ";
-                ret += gimg[i].toStringDelim("\n     + ");
+                ret += d.img.toStringDelim("\n     + ");
                 ret += "\n";
             }
         }

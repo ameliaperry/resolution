@@ -17,22 +17,17 @@ class ResDefaultBackend implements ResBackend
     int ngens(int s, int t) {
         CellData dat = output.get(keystr(s,t));
         if(dat == null) return -1;
-        return dat.gimg.length;
+        return dat.gens.length;
     }
     DModSet[] kbasis(int s, int t) {
         CellData dat = output.get(keystr(s,t));
         Main.die_if(dat == null, "Data null in ("+s+","+t+")");
         return dat.kbasis;
     }
-    @Override public int[] novikov_grading(int s, int t) {
+    @Override public Dot[] gens(int s, int t) {
         CellData dat = output.get(keystr(s,t));
         if(dat == null) return null;
-        return dat.novikov_grading;
-    }
-    @Override public DModSet[] gimg(int s, int t) {
-        CellData dat = output.get(keystr(s,t));
-        if(dat == null) return null;
-        return dat.gimg;
+        return dat.gens;
     }
     @Override public boolean isComputed(int s, int t) {
         return output.containsKey(keystr(s,t));
@@ -47,19 +42,21 @@ class ResDefaultBackend implements ResBackend
         long start;
         if(Config.TIMING) start = System.currentTimeMillis();
 
+        Dot bottom_dot = new Dot(0,0,0);
+
         for(int t = 0; t <= Config.T_CAP; t++) {
 
             /* first handle the s=0 case: kludge a start */
             CellData dat0 = new CellData();
-            dat0.gimg = new DModSet[] {};
-            dat0.novikov_grading = new int[] { 0 };
             if(t == 0) {
+                dat0.gens = new Dot[] { bottom_dot };
                 dat0.kbasis = new DModSet[] {};
             } else {
+                dat0.gens = new Dot[] {};
                 List<DModSet> kbasis0 = new ArrayList<DModSet>();
                 for(Sq q : Sq.steenrod(t)) {
                     DModSet ms = new DModSet();
-                    ms.add(new Dot(q,0,0), 1);
+                    ms.add(new Dot(bottom_dot, q), 1);
                     kbasis0.add(ms);
                 }
                 dat0.kbasis = kbasis0.toArray(new DModSet[] {});
@@ -74,14 +71,12 @@ class ResDefaultBackend implements ResBackend
 
                 /* compute the basis for this resolution bidegree */
                 ArrayList<Dot> basis_l = new ArrayList<Dot>();
-                for(int gt = s; gt < t; gt++) {
-                    for(int i = 0; i < ngens(s,gt); i++) {
-                        for(Sq q : Sq.steenrod(t - gt)) {
-                            Dot dot = new Dot(q,gt,i);
-                            basis_l.add(dot);
-                        }
-                    }
-                }
+                for(int gt = s; gt < t; gt++)
+                    for(Dot d : gens(s,gt))
+                        for(Sq q : Sq.steenrod(t - gt))
+                            basis_l.add(new Dot(d,q));
+
+                /* get the old kernel basis */
                 DModSet[] okbasis = kbasis(s-1,t);
 
                 /* compute what the map does in this basis. this takes maybe 10% of the running time */
@@ -91,25 +86,18 @@ class ResDefaultBackend implements ResBackend
                 Collection<DModSet> easy_ker = new ArrayList<DModSet>();
                 for(Dot dot : basis_l) {
                     /* compute the image of this basis vector */
-                    DModSet image = new DModSet();
-                    for(Map.Entry<Dot,Integer> d : gimg(s, dot.t)[dot.idx].entrySet()) {
-                        ModSet<Sq> c = dot.sq.times(d.getKey().sq);
-                        for(Map.Entry<Sq,Integer> q : c.entrySet())
-                            image.add(new Dot(q.getKey(), d.getKey().t, d.getKey().idx), d.getValue() * q.getValue());
-                    }
+                    dot.img = dot.base.img.times(dot.sq);
+                    if(Config.DEBUG) System.out.println("Image of "+dot+" is "+dot.img);
 
-                    if(Config.DEBUG) System.out.println("Image of "+dot+" is "+image);
-
-                    if(image.isEmpty()) {
+                    if(dot.img.isEmpty()) {
                         easy_ker.add(new DModSet(dot));
                     } else { /* have to do actual linear algebra ... */
-                        mat.put(dot, image);
+                        mat.put(dot, dot.img);
                     }
                 }
 
                 /* OK, do all the heavy lifting = linear algebra. timesuck */
-                CellData dat = calc_gimg(mat, okbasis, s);
-                output.put(keystr(s,t), dat);
+                CellData dat = calc_gens(mat, okbasis,s,t);
                 
                 /* add in the "easy" elements */
                 DModSet[] newkbasis = Arrays.copyOf(dat.kbasis, dat.kbasis.length + easy_ker.size());
@@ -117,31 +105,28 @@ class ResDefaultBackend implements ResBackend
                 for(DModSet k : easy_ker)
                     newkbasis[dat.kbasis.length + (i++)] = k;
                 dat.kbasis = newkbasis;
-                
-                /* list generators */
-                if(dat.gimg.length > 0 && Config.STDOUT) {
-                    System.out.println("Generators:");
-                    for(DModSet g : dat.gimg) System.out.println(g);
-                }
 
-                /* compute the novikov filtration */
+                /* compute the novikov filtration on new generators */
                 if(Config.MICHAEL_MODE) {
-                    dat.novikov_grading = new int[dat.gimg.length];
-                    for(i = 0; i < dat.gimg.length; i++) {
-                        DModSet g = dat.gimg[i];
-                        int val = -1;
-                        for(Dot d : g.keySet()) {
-                            calc_nov(d, s-1);
-                            if(val == -1 || val > d.nov)
-                                val = d.nov;
-                        }
-                        if(Config.STDOUT) System.out.println("generator has extra grading "+val);
-                        dat.novikov_grading[i] = val;
+                    for(Dot d : dat.gens) {
+                        d.nov = -1;
+                        for(Dot o : d.img.keySet()) 
+                            if(d.nov == -1 || o.nov < d.nov)
+                                d.nov = o.nov;
+                        if(Config.STDOUT) System.out.println("generator has extra grading "+d.nov);
                     }
                 }
+                
+                /* list generators */
+                if(dat.gens.length > 0 && Config.STDOUT) {
+                    System.out.println("Generators:");
+                    for(Dot g : dat.gens) System.out.println(g.img);
+                }
+
+                output.put(keystr(s,t), dat);
 
                 print_result(t);
-                if(Config.STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gimg.length, dat.kbasis.length);
+                if(Config.STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gens.length, dat.kbasis.length);
                 if(listener != null)
                     listener.ping();
             }
@@ -158,7 +143,7 @@ class ResDefaultBackend implements ResBackend
     
     /* Computes a basis complement to the image of mat inside the span of okbasis */
 
-    private static CellData calc_gimg(DotMatrix mat, DModSet[] okbasis, int s)
+    private static CellData calc_gens(DotMatrix mat, DModSet[] okbasis, int s, int t)
     {
         /* sketch idea:
          * do RREF on okbasis.
@@ -263,33 +248,14 @@ class ResDefaultBackend implements ResBackend
         Matrices.printMatrix("rref(transf)", transf); 
 
         /* read off the output */
-        ret.gimg = new DModSet[l1 - l2];
+        ret.gens = new Dot[l1 - l2];
         for(int j = 0; j < l1 - l2; j++) {
-            DModSet out = new DModSet();
+            ret.gens[j] = new Dot(s,t,j);
             for(int i = 0; i < values.length; i++)
-                out.add(values[i], transf[i][j + values.length]);
-            ret.gimg[j] = out;
+                ret.gens[j].img.add(values[i], transf[i][j + values.length]);
         }
 
         return ret;
-    }
-
-
-    private void calc_nov(Dot dot, int s)
-    {
-        if(dot.nov != -1)
-            return;
-
-        int n = novikov_grading(s,dot.t)[dot.idx];
-        boolean found_beta = false;
-        for(int pow : dot.sq.q)
-            if((pow % Config.P) != 0)
-                found_beta = true;
-        if(Config.DEBUG) System.out.printf("nov-grading %d, square %s, beta %s\n", n, dot.sq.toString(), found_beta ? "true" : "false");
-        if(! found_beta)
-            n++;
-
-        dot.nov = n;
     }
 
 
@@ -319,13 +285,12 @@ class ResDefaultBackend implements ResBackend
 
 class CellData
 {
-    DModSet[] gimg; /* images of generators as dot-sums in bidegree s-1,t*/
+    Dot[] gens;
     DModSet[] kbasis; /* kernel basis dot-sums in bidegree s,t */
-    int[] novikov_grading;
 
     CellData() { }
-    CellData(DModSet[] g, DModSet[] k) {
-        gimg = g;
+    CellData(Dot[] g, DModSet[] k) {
+        gens = g;
         kbasis = k;
     }
 }
@@ -333,15 +298,32 @@ class CellData
 
 class Dot
 {
+    static int id_count = 0;
+
     /* kernel basis vector */
     Sq sq;
+    Dot base;
+    int s;
     int t;
-    int idx;
+    int idx = -1;
     int nov = -1;
+    DModSet img;
     String id_cache = null;
 
-    Dot(Sq _sq, int _t, int _idx) {
-        sq = _sq; t = _t; idx = _idx;
+    Dot(Dot base, Sq sq) { /* square dot */
+        this.base = base;
+        this.sq = sq;
+        s = base.s;
+        t = base.t + sq.deg();
+        nov = sq.containsBeta() ? base.nov : base.nov + 1;
+    }
+    Dot(int s, int t, int idx) { /* generator dot */
+        this.s = s;
+        this.t = t;
+        this.idx = idx;
+        sq = Sq.ID;
+        base = this;
+        img = new DModSet();
     }
 
     public int hashCode()
@@ -350,13 +332,13 @@ class Dot
         hash *= 27863521;
         hash ^= t;
         hash *= 27863521;
-        hash ^= idx;
+        hash ^= base.idx;
         return hash;
     }
     public String toString()
     {
         if(id_cache == null) {
-            id_cache = sq.toString() + "(" + t + ";" + idx + ")";
+            id_cache = sq.toString() + "(" + t + ";" + base.idx + ")";
             if(nov != -1)
                 id_cache += "(n=" + nov + ")";
         }
@@ -364,7 +346,8 @@ class Dot
     }
     public boolean equals(Object o)
     {
-        return o.hashCode() == hashCode();
+        Dot d = (Dot) o;
+        return (d.base.idx == base.idx && d.sq.equals(sq) && d.t == t);
     }
 }
 
@@ -375,6 +358,19 @@ class DModSet extends ModSet<Dot> { /* to work around generic array restrictions
     }
     public Dot[] toArray() {
         return keySet().toArray(new Dot[] {});
+    }
+
+    public DModSet times(Sq sq)
+    {
+        DModSet ret = new DModSet();
+        for(Map.Entry<Dot,Integer> e1 : entrySet()) {
+            Dot d = e1.getKey();
+            ModSet<Sq> prod = sq.times(d.sq);
+            for(Map.Entry<Sq,Integer> e2 : prod.entrySet()) {
+                ret.add(new Dot(d.base, e2.getKey()), e1.getValue() * e2.getValue());
+            }
+        }
+        return ret;
     }
 }
 

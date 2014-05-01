@@ -72,22 +72,23 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
             for(int y = bounds[2]; y <= bounds[3]; y++) {
                 if(y == 0) continue;
 
-                int[] gr = backend.novikov_grading(y, x+y);
-                if(gr == null) break;
-                for(int i = 0; i < gr.length; i++) {
-                    if(gr[i] < bounds[4] || gr[i] > bounds[5])
+                Dot[] gens = backend.gens(y, x+y);
+                if(gens == null) break;
+                for(int i = 0; i < gens.length; i++) {
+                    Dot d = gens[i];
+                    if(d.nov < bounds[4] || d.nov > bounds[5])
                         continue;
 
                     int offset = 0;
-                    for(int j = i+1; j < gr.length; j++)
-                        if(gr[j] == gr[i])
+                    for(int j = i+1; j < gens.length; j++)
+                        if(gens[j].nov == d.nov)
                             offset++;
 
-                    Vertex v = new Vertex(x, y, i, gr[i]);
+                    Vertex v = new Vertex(x, y, i, d.nov);
                     v.offset(offset);
                     v.tp = full_transform(v.p);
                     vertices.add(v);
-                    tridegs.put(trideg_key(x,y,gr[i]), v);
+                    tridegs.put(trideg_key(x,y,d.nov), v);
                 }
             } 
         }
