@@ -34,6 +34,11 @@ public class ResMain
         if(dat == null) return -1;
         return dat.hidden;
     }
+    static int[] extra_grading(int s, int t) {
+        CellData dat = output.get(keystr(s,t));
+        if(dat == null) return null;
+        return dat.extra_grading;
+    }
     static boolean[] hiddens(int s, int t) {
         CellData dat = output.get(keystr(s,t));
         die_if(dat == null, "Data null in ("+s+","+t+")");
@@ -66,6 +71,7 @@ public class ResMain
             CellData dat0 = new CellData();
             dat0.gimg = new DModSet[] {};
             dat0.hiddens = new boolean[] { false };
+            dat0.extra_grading = new int[] { 0 };
             if(t == 0) {
                 dat0.kbasis = new DModSet[] {};
             } else {
@@ -90,7 +96,7 @@ public class ResMain
                 for(int gt = s; gt < t; gt++) {
                     for(int i = 0; i < ngens(s,gt); i++) {
                         for(Sq q : Sq.steenrod(t - gt)) {
-                            Dot dot = new Dot(q,gt,i);
+                            Dot dot = new Dot(q,gt,i,s);
                             basis_l.add(dot);
                         }
                     }
@@ -108,7 +114,7 @@ public class ResMain
                     for(Map.Entry<Dot,Integer> d : gimg(s, dot.t)[dot.idx].entrySet()) {
                         ModSet<Sq> c = dot.sq.times(d.getKey().sq);
                         for(Map.Entry<Sq,Integer> q : c.entrySet())
-                            image.add(new Dot(q.getKey(), d.getKey().t, d.getKey().idx), d.getValue() * q.getValue());
+                            image.add(new Dot(q.getKey(), d.getKey().t, d.getKey().idx, s-1), d.getValue() * q.getValue());
                     }
 
                     if(DEBUG) System.out.println("Image of "+dot+" is "+image);
@@ -121,7 +127,7 @@ public class ResMain
                 }
 
                 /* OK, do all the heavy lifting = linear algebra. timesuck */
-                CellData dat = calc_gimg(mat, okbasis);
+                CellData dat = calc_gimg(mat, okbasis, s);
                 output.put(keystr(s,t), dat);
                 
                 /* add in the "easy" elements */
@@ -135,6 +141,22 @@ public class ResMain
                 if(dat.gimg.length > 0) {
                     System.out.println("Generators:");
                     for(DModSet g : dat.gimg) System.out.println(g);
+                }
+
+                /* compute the novikov filtration */
+                if(MICHAEL_MODE) {
+                    dat.extra_grading = new int[dat.gimg.length];
+                    for(i = 0; i < dat.gimg.length; i++) {
+                        DModSet g = dat.gimg[i];
+                        int val = -1;
+                        for(Dot d : g.keySet()) {
+                            int oval = d.get_n(s-1);
+                            if(val == -1 || val > oval)
+                                val = oval;
+                        }
+                        if(STDOUT) System.out.println("generator has extra grading "+val);
+                        dat.extra_grading[i] = val;
+                    }
                 }
 
                 /* figure out how many gimg elements are to be "hidden" */
@@ -169,10 +191,18 @@ public class ResMain
     }
     
     
+    static Comparator<Dot> buildNovikovComparator(final int s)
+    {
+        return new Comparator<Dot>() {
+            @Override public int compare(Dot a, Dot b) {
+                return a.get_n(s) - b.get_n(s);
+            }
+        };
+    }
     
     /* Computes a basis complement to the image of mat inside the span of okbasis */
 
-    static CellData calc_gimg(DotMatrix mat, DModSet[] okbasis)
+    static CellData calc_gimg(DotMatrix mat, DModSet[] okbasis, int s)
     {
         /* sketch idea:
          * do RREF on okbasis.
@@ -195,11 +225,13 @@ public class ResMain
 
         /* choose an ordering on all keys and values */
         Dot[] keys = mat.keySet().toArray(new Dot[] {});
+        if(s >= 1) Arrays.sort(keys, buildNovikovComparator(s)); 
         DModSet val_set = new DModSet();
         for(DModSet ms : okbasis)
             val_set.union(ms);
         if(DEBUG) System.out.println("val_set: "+val_set);
         Dot[] values = val_set.toArray(); 
+        if(s >= 2) Arrays.sort(values, buildNovikovComparator(s-1));
         System.out.printf("o:%d k:%d v:%d\n", okbasis.length, keys.length, values.length);
 
         /* construct our huge augmented behemoth */
@@ -346,6 +378,7 @@ class CellData
     DModSet[] kbasis; /* kernel basis dot-sums in bidegree s,t */
     boolean[] hiddens;
     int hidden = 0;
+    int[] extra_grading;
 
     CellData() { }
     CellData(DModSet[] g, DModSet[] k) {
@@ -361,11 +394,35 @@ class Dot
     Sq sq;
     int t;
     int idx;
+    int s_hint = -1;
 
     String id_cache = null;
+    int n_cache = -1;
 
     Dot(Sq _sq, int _t, int _idx) {
         sq = _sq; t = _t; idx = _idx;
+    }
+    Dot(Sq _sq, int _t, int _idx, int _s) {
+        this(_sq,_t,_idx);
+        s_hint = _s;
+    }
+
+    public int get_n(int s)
+    {
+        if(n_cache != -1)
+            return n_cache;
+
+        int n = ResMain.extra_grading(s,t)[idx];
+        boolean found_beta = false;
+        for(int pow : sq.q)
+            if((pow % ResMath.P) != 0)
+                found_beta = true;
+        if(ResMain.DEBUG) System.out.printf("nov-grading %d, square %s, beta %s\n", n, sq.toString(), found_beta ? "true" : "false");
+        if(! found_beta)
+            n++;
+
+        n_cache = n;
+        return n;
     }
 
     public int hashCode()
@@ -379,8 +436,11 @@ class Dot
     }
     public String toString()
     {
-        if(id_cache == null)
+        if(id_cache == null) {
             id_cache = sq.toString() + "(" + t + ";" + idx + ")";
+            if(s_hint != -1)
+                id_cache += "(n=" + get_n(s_hint) + ")";
+        }
         return id_cache;
     }
     public boolean equals(Object o)
