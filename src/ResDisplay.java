@@ -63,7 +63,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
         }
 
         for(int x = 0; x < 100; x++) {
-            for(int y = 1; y < 100; y++) {
+            for(int y = 0; y < 100; y++) {
                 int cx = getcx(x);
                 int cy = getcy(y);
 
