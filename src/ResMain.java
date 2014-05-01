@@ -723,13 +723,19 @@ class ModSet<T> extends HashMap<T,Integer>
 
     public String toString()
     {
+        return toStringDelim(" + ");
+    }
+
+    public String toStringDelim(String delim)
+    {
         if(isEmpty())
             return "0";
         String s = "";
         for(Map.Entry<T,Integer> e : entrySet()) {
             if(s.length() != 0)
-                s += " + ";
-            s += e.getValue();
+                s += delim;
+            if(e.getValue() != 1)
+                s += e.getValue();
             s += e.getKey().toString();
         }
         return s;
