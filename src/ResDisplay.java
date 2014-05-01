@@ -4,7 +4,9 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
-class ResDisplay extends JPanel implements PingListener, MouseMotionListener {
+class ResDisplay extends JPanel implements PingListener, MouseMotionListener
+{
+    ResBackend backend;
 
     int min_filt = 0;
     int max_filt = 5;
@@ -19,7 +21,9 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener {
 
     JTextArea textarea = null;
 
-    ResDisplay() {
+    ResDisplay(ResBackend back)
+    {
+        backend = back;
         addMouseMotionListener(this);
     }
 
@@ -63,9 +67,15 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener {
                 int cx = getcx(x);
                 int cy = getcy(y);
 
+                g.setColor(Color.black);
+                if(!backend.isComputed(y,x+y)) {
+                    g.fillRect(cx-10,cy-10,20,20);
+                    continue;
+                }
+
                 TreeSet<Integer> nov = new TreeSet<Integer>();
                 int degree = 0;
-                int[] gr = ResMain.extra_grading(y, x+y);
+                int[] gr = backend.novikov_grading(y, x+y);
                 if(gr != null) {
                     for(int i : gr) {
                         if(i >= min_filt && i <= max_filt) {
@@ -74,20 +84,15 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener {
                         }
                     }
                 } else {
-                    degree = ResMain.ngens(y, x+y);
+                    degree = backend.gimg(y, x+y).length;
                 }
-
-                g.setColor(Color.black);
-                if(degree > 0) {
+                if(degree > 0)
                     g.drawString("" + degree, cx-3, cy+5);
-                } else if(degree < 0) {
-                    g.fillRect(cx-10,cy-10,20,20);
-                }
                      
                 /* draw potential alg Novikov differentials */
                 if(diff && ! nov.isEmpty()) {
                     for(int j = 2; ; j++) {
-                        int[] ogr = ResMain.extra_grading(y+j, x-1+y+j);
+                        int[] ogr = backend.novikov_grading(y+j, x-1+y+j);
                         if(ogr == null) break;
                         boolean found = false;
                         for(int i : ogr)
@@ -101,7 +106,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener {
 
                 /* draw potential Cartan differentials */
                 if(cartdiff && ! nov.isEmpty()) {
-                    int[] ogr = ResMain.extra_grading(y+1, x+y);
+                    int[] ogr = backend.novikov_grading(y+1, x+y);
                     if(ogr != null && ogr.length > 0) {
                         boolean found = false;
                         for(int i : ogr) {
@@ -127,8 +132,8 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener {
         if(x < 0 || y < 0)
             textarea.setText("");
         
-        DModSet[] gimg = ResMain.gimg(y,x+y);
-        int[] nov = ResMain.extra_grading(y,x+y);
+        DModSet[] gimg = backend.gimg(y,x+y);
+        int[] nov = backend.novikov_grading(y,x+y);
         if(gimg == null)
             return;
         String ret = "("+x+","+y+")\n";
@@ -182,21 +187,18 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener {
         repaint();
     }
 
-    public static void main(String[] args) 
+    public static void constructFrontend(ResBackend back) 
     {
         JFrame fr = new JFrame("Resolution");
         fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         fr.setSize(1200,800);
         
-        ResDisplay d = new ResDisplay();
+        ResDisplay d = new ResDisplay(back);
+        back.register_listener(d);
         fr.getContentPane().add(d);
-        ResMain.register_listener(d);
         
         fr.getContentPane().add(new ControlPanel(d), BorderLayout.EAST);
-
         fr.setVisible(true);
-
-        ResMain.main(args);
     }
 
 }

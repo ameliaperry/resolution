@@ -4,7 +4,9 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
-class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener {
+class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener
+{
+    ResBackend backend;
 
     static final double SCALENOTCH = 0.9;
     static final double SCALEPIX = 0.994;
@@ -24,7 +26,10 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
     double[] center = new double[] {30,30,0};
     boolean perspective = true;
 
-    ResDisplay3D() {
+
+    ResDisplay3D(ResBackend back)
+    {
+        backend = back;
         addMouseMotionListener(this);
         addMouseWheelListener(this);
     }
@@ -67,7 +72,7 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
             for(int y = bounds[2]; y <= bounds[3]; y++) {
                 if(y == 0) continue;
 
-                int[] gr = ResMain.extra_grading(y, x+y);
+                int[] gr = backend.novikov_grading(y, x+y);
                 if(gr == null) break;
                 for(int i = 0; i < gr.length; i++) {
                     if(gr[i] < bounds[4] || gr[i] > bounds[5])
@@ -132,10 +137,10 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         } else if((mod & MouseEvent.SHIFT_MASK) != 0) {
             /* pan */
             /* mtx is orthogonal, so transpose is inverse */
-            double[][] mtxinv = transpose(mtx);
+            double[][] mtxinv = Matrices.transpose3(mtx);
             /* get unit vectors in screen x and y direction */
-            double[] vx = transform(mtxinv, new double[]{-1,0,0});
-            double[] vy = transform(mtxinv, new double[]{0,-1,0});
+            double[] vx = Matrices.transform3(mtxinv, new double[]{-1,0,0});
+            double[] vy = Matrices.transform3(mtxinv, new double[]{0,-1,0});
             /* scale them to pixel length */
             for(int i = 0; i < 3; i++) {
                 vx[i] *= dist / viewscale;
@@ -148,14 +153,14 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         } else {
             /* rotate */
             if(dx != 0) {
-                mtx = mmult(new double[][] {
+                mtx = Matrices.mmult3(new double[][] {
                     { Math.cos(dx * ANGLE), 0, -Math.sin(dx * ANGLE) },
                     { 0, 1, 0 },
                     { Math.sin(dx * ANGLE), 0, Math.cos(dx * ANGLE) }
                 }, mtx);
             }
             if(dy != 0) {
-                mtx = mmult(new double[][] {
+                mtx = Matrices.mmult3(new double[][] {
                     { 1, 0, 0 },
                     { 0, Math.cos(dy * ANGLE), -Math.sin(dy * ANGLE) },
                     { 0, Math.sin(dy * ANGLE), Math.cos(dy * ANGLE) }
@@ -195,7 +200,7 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         pv[1] *= -1;
 
         /* rotate */
-        double[] t = transform(mtx,pv);
+        double[] t = Matrices.transform3(mtx,pv);
 
         /* apply perspective and scale */
         if(!perspective) t[2] = 0;
@@ -205,54 +210,25 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         };
     }
 
-    static double[] transform(double[][] m, double[] v)
-    {
-        return new double[] {
-            m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
-                m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
-                m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2]
-        };
-    }
-
-    static double[][] mmult(double[][] m, double[][] n)
-    {
-        double[][] r = new double[3][3];
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
-                for(int k = 0; k < 3; k++)
-                    r[i][k] += m[i][j] * n[j][k];
-        return r;
-    }
-
-    static double[][] transpose(double[][] m) {
-        double[][] r = new double[3][3];
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
-                r[i][j] = m[j][i];
-        return r;
-    }
-
     public void ping()
     {
         repaint();
     }
 
-    public static void main(String[] args) 
+    public static void constructFrontend(ResBackend back) 
     {
         JFrame fr = new JFrame("Resolution 3D");
         fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         fr.setSize(1200,800);
         
-        ResDisplay3D d = new ResDisplay3D();
+        ResDisplay3D d = new ResDisplay3D(back);
         fr.getContentPane().add(d);
-        ResMain.register_listener(d);
+        back.register_listener(d);
 
         ControlPanel3D p = new ControlPanel3D(d);
         fr.getContentPane().add(p, BorderLayout.EAST);
 
         fr.setVisible(true);
-
-        ResMain.main(args);
     }
 
 }
