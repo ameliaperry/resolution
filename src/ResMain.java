@@ -55,7 +55,7 @@ public class ResMain
     }
     static DModSet[] gimg(int s, int t) {
         CellData dat = output.get(keystr(s,t));
-        die_if(dat == null, "Data null in ("+s+","+t+")");
+        if(dat == null) return null;
         return dat.gimg;
     }
 
