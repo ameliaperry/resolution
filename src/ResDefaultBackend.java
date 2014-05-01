@@ -150,8 +150,7 @@ class ResDefaultBackend implements ResBackend
                 long elapsed = System.currentTimeMillis() - start;
                 double log = Math.log(elapsed);
                 double score = log / t; 
-                //System.out.printf("t=%d elapsed=%dms log/t=%f\n", t, elapsed, score);
-                System.out.printf("%d %d\n", t, elapsed);
+                System.out.printf("t=%d elapsed=%dms log/t=%f\n", t, elapsed, score);
             }
         }
     }
