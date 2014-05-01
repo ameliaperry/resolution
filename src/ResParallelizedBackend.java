@@ -42,7 +42,6 @@ class ResParallelizedBackend implements ResBackend
 
     @Override public void start()
     {
-        long start;
         if(Config.TIMING) start = System.currentTimeMillis();
 
         tasks = new PriorityBlockingQueue<ResTask>();
