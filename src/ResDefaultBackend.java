@@ -338,7 +338,7 @@ class Dot
     public String toString()
     {
         if(id_cache == null) {
-            id_cache = sq.toString() + "(" + t + ";" + base.idx + ")";
+            id_cache = sq.toString() + "(" + base.t + ";" + base.idx + ")";
             if(nov != -1)
                 id_cache += "(n=" + nov + ")";
         }
