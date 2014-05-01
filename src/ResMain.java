@@ -587,7 +587,10 @@ class Sq
 
     public int hashCode()
     {
-        return toString().hashCode();
+        int hash = 0;
+        for(int i : q)
+            hash = hash * 27863521 + i;
+        return hash;
     }
 
     public boolean equals(Object o)
