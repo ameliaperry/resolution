@@ -167,7 +167,7 @@ public class ResMain
 
                 /* figure out how many gimg elements are to be "hidden" */
                 /* XXX TMP */
-                dat.hiddens = new boolean[dat.gimg.length];
+                /*dat.hiddens = new boolean[dat.gimg.length];
                 if(MICHAEL_MODE) {
                     for(int l = 0; l < dat.gimg.length; l++) {
                         DModSet g = dat.gimg[l];
@@ -187,7 +187,7 @@ public class ResMain
                             System.out.println("funky element");
                         }
                     }
-                }
+                }*/
 
                 print_result(t);
                 if(STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gimg.length, dat.kbasis.length);
