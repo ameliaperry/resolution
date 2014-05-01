@@ -370,7 +370,12 @@ class Dot
 
     public int hashCode()
     {
-        return toString().hashCode();
+        int hash = sq.hashCode();
+        hash *= 27863521;
+        hash ^= t;
+        hash *= 27863521;
+        hash ^= idx;
+        return hash;
     }
     public String toString()
     {
