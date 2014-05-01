@@ -8,7 +8,7 @@ public class ResMain
 {
 
     /* upper bound on total degree to compute */
-    static final int T_CAP = 100;
+    static final int T_CAP = 1000;
     static final boolean DEBUG = false;
     static final boolean MATRIX_DEBUG = false;
     static final boolean MICHAEL_MODE = true;
@@ -253,9 +253,9 @@ public class ResMain
         int[][] aug = new int[values.length][okbasis.length + keys.length + values.length];
         for(int i = 0; i < values.length; i++) {
             for(int j = 0; j < okbasis.length; j++)
-                aug[i][j] = Math.dmod(okbasis[j].getsafe(values[i]));
+                aug[i][j] = ResMath.dmod(okbasis[j].getsafe(values[i]));
             for(int j = 0; j < keys.length; j++)
-                aug[i][j + okbasis.length] = Math.dmod(mat.get(keys[j]).getsafe(values[i]));
+                aug[i][j + okbasis.length] = ResMath.dmod(mat.get(keys[j]).getsafe(values[i]));
             for(int j = 0; j < values.length; j++)
                 aug[i][j + okbasis.length + keys.length] = (i == j ? 1 : 0);
         }
@@ -339,6 +339,7 @@ public class ResMain
 
     static void print_result(int s_max)
     {
+        if(!STDOUT) return;
         for(int s = s_max; s >= 0; s--) {
             for(int t = s; ; t++) {
                 int ng = ngens(s,t);
@@ -470,7 +471,7 @@ class Dot
 }
 
 
-class Math
+class ResMath
 {
 //    static final int P = 3;
     static final int P = 2;
@@ -525,7 +526,7 @@ class Sq
         for(int i = 0; i < o.q.length; i++)
             ret[q.length + i] = o.q[i];
 
-        if(Math.P == 2 && !ResMain.MICHAEL_MODE)
+        if(ResMath.P == 2 && !ResMain.MICHAEL_MODE)
             return new Sq(ret).resolve_2();
         else
             return new Sq(ret).resolve_p();
@@ -552,7 +553,7 @@ class Sq
             /* apply Adem relation */
             for(int c = 0; c <= a/2; c++) {
 
-                if(! Math.binom_2(b - c - 1, a - 2*c))
+                if(! ResMath.binom_2(b - c - 1, a - 2*c))
                     continue;
 
                 int[] t;
@@ -593,13 +594,13 @@ class Sq
 
         ret = new ModSet<Sq>();
         
-        int Q = 2 * (Math.P - 1); /* convenience */
+        int Q = 2 * (ResMath.P - 1); /* convenience */
 
         for(int i = q.length - 2; i >= 0; i--) {
             int x = q[i];
             int y = q[i+1];
 
-            if(x >= Math.P * y)
+            if(x >= ResMath.P * y)
                 continue;
 
             /* apply Adem relation */
@@ -608,22 +609,22 @@ class Sq
             int rx = x % Q;
             int ry = y % Q;
 
-            for(int c = 0; c <= a/Math.P; c++) {
+            for(int c = 0; c <= a/ResMath.P; c++) {
 
                 int sign = 1 - 2 * ((a+c) % 2);
 
 //                System.out.printf("adem: x=%d y=%d a=%d b=%d sign=%d\n", x, y, a, b, sign);
 
                 if(rx == 0 && ry == 0)
-                    resolve_p_add_term(sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P), (a+b-c)*Q, c*Q, i, ret);
+                    resolve_p_add_term(sign*ResMath.binom_p((ResMath.P-1)*(b-c)-1,a-c*ResMath.P), (a+b-c)*Q, c*Q, i, ret);
                 else if(rx == 1 && ry == 0)
-                    resolve_p_add_term(sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P), (a+b-c)*Q+1, c*Q, i, ret);
+                    resolve_p_add_term(sign*ResMath.binom_p((ResMath.P-1)*(b-c)-1,a-c*ResMath.P), (a+b-c)*Q+1, c*Q, i, ret);
                 else if(rx == 0 && ry == 1) {
-                    resolve_p_add_term(sign*Math.binom_p((Math.P-1)*(b-c),a-c*Math.P), (a+b-c)*Q+1, c*Q, i, ret);
-                    resolve_p_add_term(-sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P-1), (a+b-c)*Q, c*Q+1, i, ret);
+                    resolve_p_add_term(sign*ResMath.binom_p((ResMath.P-1)*(b-c),a-c*ResMath.P), (a+b-c)*Q+1, c*Q, i, ret);
+                    resolve_p_add_term(-sign*ResMath.binom_p((ResMath.P-1)*(b-c)-1,a-c*ResMath.P-1), (a+b-c)*Q, c*Q+1, i, ret);
                 }
                 else if(rx == 1 && ry == 1)
-                    resolve_p_add_term(-sign*Math.binom_p((Math.P-1)*(b-c)-1,a-c*Math.P-1), (a+b-c)*Q+1, c*Q+1, i, ret);
+                    resolve_p_add_term(-sign*ResMath.binom_p((ResMath.P-1)*(b-c)-1,a-c*ResMath.P-1), (a+b-c)*Q+1, c*Q+1, i, ret);
                 else ResMain.die_if(true, "Bad Adem case.");
                        
             }
@@ -642,7 +643,7 @@ class Sq
     {
 //        System.out.printf("adem_term: coeff=%d a=%d b=%d\n", coeff, a, b);
 
-        coeff = Math.dmod(coeff);
+        coeff = ResMath.dmod(coeff);
         if(coeff == 0) return; /* save some work... */
 
         int[] t;
@@ -688,7 +689,7 @@ class Sq
     public static Iterable<Sq> steenrod(int n)
     {
         Iterable<int[]> p;
-        if(Math.P == 2) p = part_2(n,n);
+        if(ResMath.P == 2) p = part_2(n,n);
         else            p = part_p(n,n);
         Collection<Sq> ret = new ArrayList<Sq>();
 
@@ -700,7 +701,7 @@ class Sq
 
     private static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
     private static String part_cache_keystr(int n, int max) {
-        return "("+n+"/"+max+"/"+Math.P+")";
+        return "("+n+"/"+max+"/"+ResMath.P+")";
     }
 
     private static Iterable<int[]> part_2(int n, int max)
@@ -744,9 +745,9 @@ class Sq
 
         Collection<int[]> ret = new ArrayList<int[]>();
 
-        for(int i = 0; i <= max; i += 2 * (Math.P - 1)) { /* XXX i could start higher? */
+        for(int i = 0; i <= max; i += 2 * (ResMath.P - 1)) { /* XXX i could start higher? */
             /* try P^i */
-            for(int[] q0 : part_p(n-i, i/Math.P)) {
+            for(int[] q0 : part_p(n-i, i/ResMath.P)) {
                 int[] q1 = new int[q0.length + 1];
                 q1[0] = i;
                 for(int j = 0; j < q0.length; j++)
@@ -755,7 +756,7 @@ class Sq
             }
             /* try BP^i */
             if(i+1 > max) break;
-            for(int[] q0 : part_p(n-(i+1), (i+1)/Math.P)) {
+            for(int[] q0 : part_p(n-(i+1), (i+1)/ResMath.P)) {
                 int[] q1 = new int[q0.length + 1];
                 q1[0] = i+1;
                 for(int j = 0; j < q0.length; j++)
@@ -780,7 +781,7 @@ class ModSet<T> extends HashMap<T,Integer>
         if(containsKey(d)) c = get(d);
         else c = 0;
 
-        c = Math.dmod(c + mult);
+        c = ResMath.dmod(c + mult);
 
         if(c == 0) 
             remove(d);
@@ -798,7 +799,7 @@ class ModSet<T> extends HashMap<T,Integer>
 
     public boolean contains(T d)
     {
-        return (getsafe(d) % Math.P != 0);
+        return (getsafe(d) % ResMath.P != 0);
     }
 
     public void union(ModSet<T> s)
@@ -872,12 +873,12 @@ class Matrices
             leading_cols[i] = j;
 
             /* normalize the row */
-            int inv = Math.inverse[mat[i][j]];
+            int inv = ResMath.inverse[mat[i][j]];
             for(int k = h; k < w; k++)
-                mat[i][k] = (mat[i][k] * inv) % Math.P;
+                mat[i][k] = (mat[i][k] * inv) % ResMath.P;
 
             /* clear the rest of the column. this part is cubic-time so we optimize P=2 */
-            if(Math.P == 2) {
+            if(ResMath.P == 2) {
                 for(int k = 0; k < h; k++) {
                     if(mat[k][j] == 0) continue;
                     if(k == i) continue;
@@ -888,9 +889,9 @@ class Matrices
                 for(int k = 0; k < h; k++) {
                     if(mat[k][j] == 0) continue;
                     if(k == i) continue;
-                    int mul = Math.P - mat[k][j];
+                    int mul = ResMath.P - mat[k][j];
                     for(int l = 0; l < w; l++)
-                        mat[k][l] = (mat[k][l] + mat[i][l] * mul) % Math.P;
+                        mat[k][l] = (mat[k][l] + mat[i][l] * mul) % ResMath.P;
                 }
             }
         }
