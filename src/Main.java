@@ -20,7 +20,7 @@ class Main {
     {
         init();
 
-        ResBackend back = new ResDefaultBackend();
+        ResBackend back = new ResParallelizedBackend();
         ResDisplay.constructFrontend(back);
         
         back.start();
