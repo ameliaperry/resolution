@@ -12,6 +12,8 @@ public class ResMain
     static final boolean DEBUG = false;
     static final boolean MATRIX_DEBUG = false;
     static final boolean MICHAEL_MODE = true;
+    static final boolean STDOUT = false;
+    static final boolean TIMING = true;
 
     static final Sq P1 = new Sq(new int[] {2});
     static final Sq P1B = new Sq(new int[] {2,1});
@@ -63,6 +65,8 @@ public class ResMain
 
     static void resolve(AMod a)
     {
+        long start;
+        if(TIMING) start = System.currentTimeMillis();
 
         for(int t = 0; t <= T_CAP; t++) {
 
@@ -83,7 +87,7 @@ public class ResMain
                 }
                 dat0.kbasis = kbasis0.toArray(new DModSet[] {});
             }
-            System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", 0, t, 0, dat0.kbasis.length);
+            if(STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", 0, t, 0, dat0.kbasis.length);
             output.put(keystr(0,t), dat0);
 
 
@@ -138,7 +142,7 @@ public class ResMain
                 dat.kbasis = newkbasis;
                 
                 /* list generators */
-                if(dat.gimg.length > 0) {
+                if(dat.gimg.length > 0 && STDOUT) {
                     System.out.println("Generators:");
                     for(DModSet g : dat.gimg) System.out.println(g);
                 }
@@ -184,8 +188,15 @@ public class ResMain
                 }
 
                 print_result(t);
-                System.out.printf("(%2d,%2d): %2d gen, %2d ker\n", s, t, dat.gimg.length, dat.kbasis.length);
-                System.out.println();
+                if(STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gimg.length, dat.kbasis.length);
+            }
+
+            if(TIMING && t >= 1) {
+                long elapsed = System.currentTimeMillis() - start;
+                double log = Math.log(elapsed);
+                double score = log / t; 
+                //System.out.printf("t=%d elapsed=%dms log/t=%f\n", t, elapsed, score);
+                System.out.printf("%d %d\n", t, elapsed);
             }
         }
     }
@@ -232,7 +243,7 @@ public class ResMain
         if(DEBUG) System.out.println("val_set: "+val_set);
         Dot[] values = val_set.toArray(); 
         if(s >= 2) Arrays.sort(values, buildNovikovComparator(s-1));
-        System.out.printf("o:%d k:%d v:%d\n", okbasis.length, keys.length, values.length);
+        if(STDOUT) System.out.printf("o:%d k:%d v:%d\n", okbasis.length, keys.length, values.length);
 
         /* construct our huge augmented behemoth */
         int[][] aug = new int[values.length][okbasis.length + keys.length + values.length];
