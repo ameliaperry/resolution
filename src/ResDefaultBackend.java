@@ -21,7 +21,7 @@ class ResDefaultBackend implements ResBackend
     }
     DModSet[] kbasis(int s, int t) {
         CellData dat = output.get(keystr(s,t));
-        Main.die_if(dat == null, "Data null in ("+s+","+t+")");
+        if(Config.DEBUG) Main.die_if(dat == null, "Data null in ("+s+","+t+")");
         return dat.kbasis;
     }
     @Override public Dot[] gens(int s, int t) {
@@ -219,7 +219,7 @@ class ResDefaultBackend implements ResBackend
             ms.add(keys[j], 1);
             for(int i = 0; i < values.length; i++) {
                 if(bmatrr[i][j] != 0) {
-                    Main.die_if(i >= bmatrr_leads.length, "bad rref: no leading one");
+                    if(Config.DEBUG) Main.die_if(i >= bmatrr_leads.length, "bad rref: no leading one");
                     ms.add(keys[bmatrr_leads[i]], -bmatrr[i][j]);
                 }
             }
