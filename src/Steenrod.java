@@ -1,6 +1,6 @@
 import java.util.*;
 
-class Sq
+class Sq implements Comparable<Sq>
 {
     public static final Sq ID = new Sq(new int[] {});
 
@@ -42,14 +42,9 @@ class Sq
             return new Sq(ret).resolve_p();
     }
 
-//    private static Map<String,ModSet<Sq>> resolve_cache = new HashMap<String,ModSet<Sq>>();
     private ModSet<Sq> resolve_2()
     {
         ModSet<Sq> ret;
-//        String key = toString();
-//        ret = resolve_cache.get(key);
-//        if(ret != null)
-//            return ret;
 
         ret = new ModSet<Sq>();
 
@@ -83,24 +78,17 @@ class Sq
                     ret.add(sub.getKey(), sub.getValue());
             }
 
-//            resolve_cache.put(key, ret);
             return ret;
         }
 
         /* all clear */
         ret.add(this, 1);
-//        resolve_cache.put(key, ret);
         return ret;
     }
 
     private ModSet<Sq> resolve_p()
     {
         ModSet<Sq> ret;
-
-//        String key = toString();
-//        ModSet<Sq> ret = resolve_cache.get(key);
-//        if(ret != null)
-//            return ret;
 
         ret = new ModSet<Sq>();
         
@@ -139,13 +127,11 @@ class Sq
                        
             }
 
-//            resolve_cache.put(key, ret);
             return ret;
         }
 
         /* all clear */
         ret.add(this, 1);
-//        resolve_cache.put(key, ret);
         return ret;
     }
 
@@ -173,7 +159,7 @@ class Sq
             ret.add(sub.getKey(), sub.getValue() * coeff);
     }
 
-    public String toString()
+    @Override public String toString()
     {
         if(q.length == 0) return "1";
         String s = "";
@@ -181,7 +167,7 @@ class Sq
         return s;
     }
 
-    public int hashCode()
+    @Override public int hashCode()
     {
         int hash = 0;
         for(int i : q)
@@ -189,9 +175,19 @@ class Sq
         return hash;
     }
 
-    public boolean equals(Object o)
+    @Override public boolean equals(Object o)
     {
         return toString().equals(o.toString());
+    }
+
+    @Override public int compareTo(Sq o)
+    {
+        if(q.length != o.q.length)
+            return q.length - o.q.length;
+        for(int i = 0; i < q.length; i++)
+            if(q[i] != o.q[i])
+                return q[i] - o.q[i];
+        return 0;
     }
 
 
@@ -208,6 +204,14 @@ class Sq
 
         return ret;
     }
+
+/*    public static void init()
+    {
+        int idx = 1;
+        for(int n = 0; n < T_CAP; n++)
+            for(Sq q : steenrod(n))
+                idxcache.put(q, idx);
+    } */
 
     private static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
     private static String part_cache_keystr(int n, int max) {
