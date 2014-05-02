@@ -50,7 +50,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
         super.paintComponent(g);
 
         /* draw axes */
-        for(int x = 0; x < 100; x++) {
+        for(int x = 0; x < Config.MAX_DISPLAY; x++) {
             g.setColor(Color.lightGray);
             g.drawLine(getcx(x)-10, getcy(0)+10,getcx(x)-10,getcy(100)+10);
             g.drawLine(getcx(0)-10, getcy(x)+10,getcx(100)+10,getcy(x)+10);
@@ -62,8 +62,8 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
             }
         }
 
-        for(int x = 0; x < 100; x++) {
-            for(int y = 0; y < 100; y++) {
+        for(int x = 0; x < Config.MAX_DISPLAY; x++) {
+            for(int y = 0; y < Config.MAX_DISPLAY; y++) {
                 int cx = getcx(x);
                 int cy = getcy(y);
 
@@ -158,7 +158,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
 
         int x = getx(mx);
         int y = gety(my);
-        if(x >= 0 && x <= 100 && y >= 1 && y <= 100) {
+        if(x >= 0 && x <= Config.MAX_DISPLAY && y >= 0 && y <= Config.MAX_DISPLAY) {
             setSelected(x,y);
         } else {
             setSelected(-1,-1);
@@ -206,8 +206,8 @@ class ControlPanel extends Box {
     {
         super(BoxLayout.Y_AXIS);
 
-        final JSpinner s1 = new JSpinner(new SpinnerNumberModel(0,0,100,1));
-        final JSpinner s2 = new JSpinner(new SpinnerNumberModel(5,0,100,1));
+        final JSpinner s1 = new JSpinner(new SpinnerNumberModel(0,0,Config.MAX_DISPLAY,1));
+        final JSpinner s2 = new JSpinner(new SpinnerNumberModel(5,0,Config.MAX_DISPLAY,1));
 
         s1.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
