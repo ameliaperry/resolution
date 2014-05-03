@@ -363,3 +363,20 @@ class ResTaskThread extends Thread
     }
 }
 
+
+class CellData
+{
+    Dot[] gens;
+    DModSet[] kbasis; /* kernel basis dot-sums in bidegree s,t */
+
+    CellData() { }
+    CellData(Dot[] g, DModSet[] k) {
+        gens = g;
+        kbasis = k;
+    }
+}
+
+
+class DotMatrix extends HashMap<Dot,DModSet>
+{
+}
