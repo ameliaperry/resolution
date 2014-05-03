@@ -3,6 +3,9 @@ import java.util.*;
 class Sq implements Comparable<Sq>
 {
     public static final Sq ID = new Sq(new int[] {});
+    public static final Sq BETA = new Sq(new int[] {1});
+    public static final Sq P1 = new Sq(new int[] {Config.Q});
+    public static final Sq P2 = new Sq(new int[] {2*Config.Q});
 
     int[] q; /* Indices of the power operations.
                 Mod 2, i indicates Sq^i.
@@ -163,7 +166,20 @@ class Sq implements Comparable<Sq>
     {
         if(q.length == 0) return "1";
         String s = "";
-        for(int i : q) s += "Sq"+i;
+        if(Config.P == 2 && ! Config.MICHAEL_MODE) {
+            for(int i : q) s += "Sq"+i;
+        } else {
+            for(int i : q) {
+                if(i == 1)
+                    s += "\u03b2"; /* beta */
+                else if(i % Config.Q == 0)
+                    s += "P"+(i/Config.Q);
+                else if(i % Config.Q == 1)
+                    s += "\u03b2P"+(i/Config.Q);
+                else
+                    Main.die_if(true, "bad A_"+Config.P+" element: Sq"+i);
+            }
+        }
         return s;
     }
 
@@ -177,7 +193,13 @@ class Sq implements Comparable<Sq>
 
     @Override public boolean equals(Object o)
     {
-        return toString().equals(o.toString());
+        Sq s = (Sq)o;
+        if(q.length != s.q.length)
+            return false;
+        for(int i = 0; i < q.length; i++)
+            if(q[i] != s.q[i])
+                return false;
+        return true;
     }
 
     @Override public int compareTo(Sq o)
