@@ -16,4 +16,7 @@ class Config
     static final boolean MICHAEL_MODE = true;
     static final boolean STDOUT = false;
     static final boolean TIMING = true;
+
+    /* the following aren't actually config */
+    static final int Q = 2*(P-1);
 }
