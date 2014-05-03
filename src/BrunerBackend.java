@@ -9,34 +9,52 @@ class BrunerBackend implements ResBackend
 {
     PingListener listener = null;
 
-    HashMap<String,BrunerCellData> output = new HashMap<String,BrunerCellData>();
-    static String keystr(int s, int t) {
-        return s+","+t;
+    HashMap<Integer,BrunerCellData> output = new HashMap<Integer,BrunerCellData>();
+    static Integer keystr(int s, int t) {
+        return (s<<16) ^ t;
     }
 
     /* convenience methods for cell data lookup */
     BrunerCellData dat(int s, int t) {
-        return output.get(keystr(s,t));
+        synchronized(output) {
+            return output.get(keystr(s,t));
+        }
     }
     int ngens(int s, int t) {
-        BrunerCellData dat = output.get(keystr(s,t));
+        BrunerCellData dat;
+        synchronized(output) {
+            dat = output.get(keystr(s,t));
+        }
         if(dat == null) return -1;
         return dat.gens.length;
     }
     Collection<DModSet> kbasis(int s, int t) {
-        BrunerCellData dat = output.get(keystr(s,t));
+        BrunerCellData dat;
+        synchronized(output) {
+            dat = output.get(keystr(s,t));
+        }
         if(Config.DEBUG) Main.die_if(dat == null, "Data null in ("+s+","+t+")");
         return dat.kbasis;
     }
     @Override public Dot[] gens(int s, int t) {
-        BrunerCellData dat = output.get(keystr(s,t));
+        BrunerCellData dat;
+        synchronized(output) {
+            dat = output.get(keystr(s,t));
+        }
         if(dat == null) return null;
         return dat.gens;
     }
     @Override public boolean isComputed(int s, int t) {
         if(s < 0)
             return true;
-        return output.containsKey(keystr(s,t));
+        synchronized(output) {
+            return output.containsKey(keystr(s,t));
+        }
+    }
+    private void putOutput(int s, int t, BrunerCellData dat) {
+        synchronized(output) {
+            output.put(keystr(s,t), dat);
+        }
     }
 
 
@@ -50,17 +68,17 @@ class BrunerBackend implements ResBackend
         if(Config.TIMING) start = System.currentTimeMillis();
 
         tasks = new PriorityBlockingQueue<ResTask>();
-        claims = new HashSet<String>();
+        claims = new HashSet<Integer>();
         putTask(new ResTask(ResTask.COMPUTE, 0, 0));
 
         for(int i = 0; i < Config.THREADS; i++)
             new BrunerResTaskThread(this).start();
     }
 
-    HashSet<String> claims;
+    HashSet<Integer> claims;
     private boolean atomic_claim_grid(int s, int t)
     {
-        String key = keystr(s,t);
+        Integer key = keystr(s,t);
         synchronized(claims) {
             if(claims.contains(key))
                 return false;
@@ -202,7 +220,7 @@ class BrunerBackend implements ResBackend
             olddat.kbasis = null;
 
         BrunerCellData dat = new BrunerCellData(gens.toArray(new Dot[] {}), ker);
-        output.put(keystr(s,t), dat);
+        putOutput(s, t, dat);
 
         print_result(t);
         if(Config.STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gens.length, dat.kbasis.size());
