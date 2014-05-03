@@ -3,9 +3,11 @@ import java.util.*;
 class Sq implements Comparable<Sq>
 {
     public static final Sq ID = new Sq(new int[] {});
-    public static final Sq BETA = new Sq(new int[] {1});
-    public static final Sq P1 = new Sq(new int[] {Config.Q});
-    public static final Sq P2 = new Sq(new int[] {2*Config.Q});
+    public static final Sq[] HOPF = new Sq[] {
+        new Sq(new int[] {1}),
+        new Sq(new int[] {Config.Q}),
+        new Sq(new int[] {2*Config.Q})
+    };
 
     int[] q; /* Indices of the power operations.
                 Mod 2, i indicates Sq^i.

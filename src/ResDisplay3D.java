@@ -12,7 +12,7 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
     static final double SCALEPIX = 0.994;
     static final double ANGLE = 0.015;
 
-    int[] bounds = { 0, Config.MAX_DISPLAY, 0, Config.MAX_DISPLAY, 0, Config.MAX_DISPLAY };
+    int[] bounds = { 0, 100, 0, 100, 0, 100 };
     boolean diff = false;
     boolean cartdiff = true;
     double magnify_n = 1.0;
@@ -262,7 +262,7 @@ class ControlPanel3D extends Box {
 
     private JSpinner produceJSpinner(final int i, final ResDisplay3D parent)
     {
-        final JSpinner ret = new JSpinner(new SpinnerNumberModel(parent.bounds[i],0,Config.MAX_DISPLAY,1));
+        final JSpinner ret = new JSpinner(new SpinnerNumberModel(parent.bounds[i],0,1000,1));
 
         ret.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {

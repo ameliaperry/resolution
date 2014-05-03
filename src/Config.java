@@ -9,7 +9,6 @@ class Config
     static final boolean DEBUG_THREADS = false;
 
     static final int T_CAP = 1000; /* no penalties for setting this high */
-    static final int MAX_DISPLAY = 200; /* performance penalties in the 2D display for setting this high */
 
     static final boolean DEBUG = false;
     static final boolean MATRIX_DEBUG = false;

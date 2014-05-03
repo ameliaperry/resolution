@@ -6,6 +6,8 @@ import javax.swing.event.*;
 
 class ResDisplay extends JPanel implements PingListener, MouseMotionListener
 {
+    final static int BLOCK_WIDTH = 30;
+
     ResBackend backend;
 
     int min_filt = 0;
@@ -14,8 +16,11 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
     boolean diff = false;
     boolean cartdiff = true;
 
-    int viewx = 0;
-    int viewy = 0;
+    boolean[] hlines = new boolean[] { true, true, false };
+    boolean[] hhide = new boolean[] { false, false, false };
+
+    int viewx = 30;
+    int viewy = -40;
     int mx = -1;
     int my = -1;
 
@@ -25,35 +30,54 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
     {
         backend = back;
         addMouseMotionListener(this);
+
     }
 
     int getcx(int x) {
-        return 30 + 20 * x + viewx;
+        return BLOCK_WIDTH * x + viewx;
     }
     int getcy(int y) {
-        return getHeight() - 40 - 20 * y + viewy;
+        return getHeight() - BLOCK_WIDTH * y + viewy;
     }
     int getx(int cx) {
-        cx -= (30 + viewx);
-        cx += 10;
-        return cx / 20;
+        cx -= viewx;
+        cx += BLOCK_WIDTH/2;
+        return cx / BLOCK_WIDTH;
     }
     int gety(int cy) {
-        cy = cy - getHeight() + 40 - viewy;
+        cy = cy - getHeight() - viewy;
         cy = -cy;
-        cy += 10;
-        return cy / 20;
+        cy += BLOCK_WIDTH/2;
+        return cy / BLOCK_WIDTH;
+    }
+
+    boolean isVisible(Dot d) {
+        if(d.nov != -1 && (d.nov < min_filt || d.nov > max_filt))
+            return false;
+        for(int i = 0; i <= 2; i++) if(hhide[i])
+            for(Dot o : d.img.keySet())
+                if(o.sq.equals(Sq.HOPF[i]))
+                    return false; /* risky -- we can have joint h_i multiples */
+        return true;
     }
 
     public void paintComponent(Graphics g)
     {
         super.paintComponent(g);
 
+        int min_x_visible = getx(-BLOCK_WIDTH);
+        int min_y_visible = gety(getHeight()+BLOCK_WIDTH);
+        if(min_x_visible < 0) min_x_visible = 0;
+        if(min_y_visible < 0) min_y_visible = 0;
+        int max_x_visible = getx(getWidth()+BLOCK_WIDTH);
+        int max_y_visible = gety(-BLOCK_WIDTH);
+        int max_visible = (max_x_visible < max_y_visible) ? max_y_visible : max_x_visible;
+
         /* draw axes */
-        for(int x = 0; x < Config.MAX_DISPLAY; x++) {
+        for(int x = 0; x <= max_visible; x++) {
             g.setColor(Color.lightGray);
-            g.drawLine(getcx(x)-10, getcy(0)+10,getcx(x)-10,getcy(100)+10);
-            g.drawLine(getcx(0)-10, getcy(x)+10,getcx(100)+10,getcy(x)+10);
+            g.drawLine(getcx(x)-BLOCK_WIDTH/2, getcy(0)+BLOCK_WIDTH/2, getcx(x)-BLOCK_WIDTH/2, 0);
+            g.drawLine(getcx(0)-BLOCK_WIDTH/2, getcy(x)+BLOCK_WIDTH/2, getWidth(), getcy(x)+BLOCK_WIDTH/2);
 
             if(x % 5 == 0) {
                 g.setColor(Color.black);
@@ -62,65 +86,118 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
             }
         }
 
-        for(int x = 0; x < Config.MAX_DISPLAY; x++) {
-            for(int y = 0; y < Config.MAX_DISPLAY; y++) {
+        Comparator<Dot> dotComparator = new Comparator<Dot>() {
+            @Override public int compare(Dot a, Dot b) {
+                if(a.s != b.s)
+                    return a.s - b.s;
+                return a.compareTo(b);   
+            }
+        };
+        Set<Dot> frameVisibles = new TreeSet<Dot>(dotComparator);
+        Map<Dot,int[]> pos = new TreeMap<Dot,int[]>(dotComparator);
+
+        /* assign dots a location */
+        for(int x = 0; ; x++) {
+            int y;
+            for(y = 0; ; y++) {
+                if(!backend.isComputed(y,x+y))
+                    break;
+
                 int cx = getcx(x);
                 int cy = getcy(y);
 
-                g.setColor(Color.black);
-                if(!backend.isComputed(y,x+y)) {
-                    g.fillRect(cx-10,cy-10,20,20);
+                Dot[] gens = backend.gens(y, x+y);
+                int visible = 0;
+                for(Dot d : gens) if(isVisible(d)) {
+                    frameVisibles.add(d);
+                    visible++;
+                }
+                int offset = -5 * visible / 2;
+                for(Dot d : gens) if(frameVisibles.contains(d)) {
+                    pos.put(d, new int[] { cx + offset, cy - offset/2 });
+                    offset += 5;
+                }
+            }
+            if(y == 0) break;
+        }
+
+        /* draw differentials, multiplications, and black blocks */
+        for(int x = min_x_visible; x <= max_x_visible; x++) {
+            for(int y = min_y_visible; y <= max_y_visible; y++) {
+
+                /* black non-computed region */
+                if(! backend.isComputed(y,x+y)) {
+                    int cx = getcx(x);
+                    int cy = getcy(y);
+                    g.setColor(Color.black);
+                    g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                     continue;
                 }
-
-                TreeSet<Integer> nov = new TreeSet<Integer>();
-                int degree = 0;
+                
                 Dot[] gens = backend.gens(y, x+y);
-                for(Dot d : gens) {
-                    if(d.nov == -1 || (d.nov >= min_filt && d.nov <= max_filt)) {
-                        degree++;
-                        if(d.nov != -1 && d.nov != max_filt) nov.add(d.nov+1);
+                Collection<Dot> visibles = new ArrayList<Dot>();
+                for(Dot d : gens) if(frameVisibles.contains(d))
+                    visibles.add(d);
+
+                /* draw multiplications */
+                for(int i = 0; i <= 2; i++) if(hlines[i]) {
+                    g.setColor(Color.black);
+                    for(Dot d : visibles) {
+                        int[] src = pos.get(d);
+                        for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i]) && frameVisibles.contains(o.base)) {
+                            int[] dest = pos.get(o.base);
+                            if(src == null) System.err.printf("src is null, dot %s, s=%d\n", d, d.s);
+                            if(dest == null) System.err.printf("dest is null, dot %s, s=%d\n", o, o.s);
+                            g.drawLine(src[0], src[1], dest[0], dest[1]);
+                        }
                     }
                 }
-                if(degree > 0)
-                    g.drawString("" + degree, cx-3, cy+5);
-                     
+
                 /* draw potential alg Novikov differentials */
-                if(diff && ! nov.isEmpty()) {
+                if(diff && x >= 1) {
+                    g.setColor(Color.green);
                     for(int j = 2; ; j++) {
                         if(! backend.isComputed(y+j, x-1 + y+j))
                             break;
                         Dot[] ogen = backend.gens(y+j, x-1 + y+j);
-                        boolean found = false;
-                        for(Dot d : ogen)
-                            if(nov.contains(d.nov))
-                               found = true; 
-                        if(!found) continue;
-                        g.setColor(Color.green);
-                        g.drawLine(cx-2, cy-2, getcx(x-1)+2, getcy(y+j)+2);
+                        for(Dot d : visibles) {
+                            int[] src = pos.get(d);
+                            for(Dot o : ogen)
+                                if(o.nov == d.nov + 1 && frameVisibles.contains(o)) {
+                                    int[] dest = pos.get(o);
+                                    if(src == null) System.err.printf("src is null, dot %s, s=%d\n", d, d.s);
+                                    if(dest == null) System.err.printf("dest is null, dot %s, s=%d\n", o, o.s);
+                                    g.drawLine(src[0], src[1], dest[0], dest[1]);
+                                }
+                        }
                     }
                 }
 
                 /* draw potential Cartan differentials */
-                if(cartdiff && ! nov.isEmpty()) {
+                if(cartdiff && x >= 1 && backend.isComputed(y+1, y+1 + x-1)) {
+                    g.setColor(Color.red);
                     Dot[] ogen = backend.gens(y+1, y+1 + x-1);
-                    if(ogen != null && ogen.length > 0) {
-                        boolean found = false;
-                        for(Dot d : ogen) {
-                            if(d.nov >= nov.first() + 1) {
-                                found = true;
-                                break;
+
+                    for(Dot o : ogen) if(frameVisibles.contains(o)) {
+                        int[] dest = pos.get(o);
+                        for(Dot d : visibles)
+                            if(o.nov >= d.nov + 2) {
+                                int[] src = pos.get(d);
+                                if(src == null) System.err.printf("src is null, dot %s, s=%d\n", d, d.s);
+                                if(dest == null) System.err.printf("dest is null, dot %s, s=%d\n", o, o.s);
+                                g.drawLine(src[0], src[1], dest[0], dest[1]);
                             }
-                        }
-                        if(found) {
-                            g.setColor(Color.red);
-                            g.drawLine(cx-2, cy-2, getcx(x-1)+2, getcy(y+1)+2);
-                        }
                     }
                 }
 
 
             }
+        }
+
+        /* draw dots and black blocks */
+        g.setColor(Color.black);
+        for(int[] p : pos.values()) {
+            g.fillOval(p[0]-2, p[1]-2, 5, 5);
         }
 
     }
@@ -158,7 +235,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
 
         int x = getx(mx);
         int y = gety(my);
-        if(x >= 0 && x <= Config.MAX_DISPLAY && y >= 0 && y <= Config.MAX_DISPLAY) {
+        if(x >= 0 && y >= 0) {
             setSelected(x,y);
         } else {
             setSelected(-1,-1);
@@ -206,8 +283,8 @@ class ControlPanel extends Box {
     {
         super(BoxLayout.Y_AXIS);
 
-        final JSpinner s1 = new JSpinner(new SpinnerNumberModel(0,0,Config.MAX_DISPLAY,1));
-        final JSpinner s2 = new JSpinner(new SpinnerNumberModel(5,0,Config.MAX_DISPLAY,1));
+        final JSpinner s1 = new JSpinner(new SpinnerNumberModel(0,0,1000,1));
+        final JSpinner s2 = new JSpinner(new SpinnerNumberModel(5,0,1000,1));
 
         s1.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
@@ -220,6 +297,27 @@ class ControlPanel extends Box {
             public void stateChanged(ChangeEvent e) {
                 parent.max_filt = (Integer) s2.getValue();
                 parent.repaint();
+            }
+        });
+
+        /* hack in a key listener to globally handle pgup/pgdn presses */
+        KeyboardFocusManager.getCurrentKeyboardFocusManager()
+            .addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override public boolean dispatchKeyEvent(KeyEvent e) {
+                if(e.getID() != KeyEvent.KEY_PRESSED)
+                    return false;
+                switch(e.getKeyCode()) {
+                    case KeyEvent.VK_PAGE_UP:
+                        s1.setValue( ((Integer) s1.getValue()) + 1);
+                        s2.setValue( ((Integer) s2.getValue()) + 1);
+                        return true;
+                    case KeyEvent.VK_PAGE_DOWN:
+                        s1.setValue( ((Integer) s1.getValue()) - 1);
+                        s2.setValue( ((Integer) s2.getValue()) - 1);
+                        return true;
+                    default:
+                        return false;
+                }
             }
         });
 
@@ -255,6 +353,33 @@ class ControlPanel extends Box {
             }
         });
         add(cartdiff);
+        add(Box.createVerticalStrut(20));
+
+        for(int i = 0; i <= 2; i++) {
+            final int j = i;
+
+            Box h = Box.createHorizontalBox();
+            h.add(new JLabel("h"+i+":"));
+            final JCheckBox hlines = new JCheckBox("lines", parent.hlines[i]);
+            hlines.addActionListener(new ActionListener() {
+                @Override public void actionPerformed(ActionEvent evt) {
+                    parent.hlines[j] = hlines.isSelected();
+                    parent.repaint();
+                }
+            });
+            final JCheckBox hhide = new JCheckBox("hide", parent.hhide[i]);
+            hhide.addActionListener(new ActionListener() {
+                @Override public void actionPerformed(ActionEvent evt) {
+                    parent.hhide[j] = hhide.isSelected();
+                    parent.repaint();
+                }
+            });
+            h.add(hlines);
+            h.add(hhide);
+            
+            h.setAlignmentX(-1.0f);
+            add(h);
+        }
         add(Box.createVerticalStrut(20));
 
         parent.textarea = new JTextArea();
