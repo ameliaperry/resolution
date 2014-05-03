@@ -4,7 +4,7 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
-class ResDisplay extends JPanel implements PingListener, MouseMotionListener
+class ResDisplay extends JPanel implements PingListener, MouseMotionListener, MouseListener
 {
     final static int BLOCK_WIDTH = 30;
 
@@ -21,16 +21,28 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
 
     int viewx = 30;
     int viewy = -40;
+    int selx = -1;
+    int sely = -1;
     int mx = -1;
     int my = -1;
 
     JTextArea textarea = null;
 
+    static Comparator<Dot> dotComparator = new Comparator<Dot>() {
+        @Override public int compare(Dot a, Dot b) {
+            if(a.s != b.s)
+                return a.s - b.s;
+            if(a.nov != -1 && b.nov != -1 && a.nov != b.nov)
+                return a.nov - b.nov;
+            return a.compareTo(b);   
+        }
+    };
+
     ResDisplay(ResBackend back)
     {
         backend = back;
+        addMouseListener(this);
         addMouseMotionListener(this);
-
     }
 
     int getcx(int x) {
@@ -73,7 +85,15 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
         int max_y_visible = gety(-BLOCK_WIDTH);
         int max_visible = (max_x_visible < max_y_visible) ? max_y_visible : max_x_visible;
 
-        /* draw axes */
+        /* draw selection */
+        if(selx >= 0 && sely >= 0) {
+            g.setColor(Color.orange);
+            int cx = getcx(selx);
+            int cy = getcy(sely);
+            g.fillRect(cx - BLOCK_WIDTH/2, cy - BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
+        }
+
+        /* draw grid */
         for(int x = 0; x <= max_visible; x++) {
             g.setColor(Color.lightGray);
             g.drawLine(getcx(x)-BLOCK_WIDTH/2, getcy(0)+BLOCK_WIDTH/2, getcx(x)-BLOCK_WIDTH/2, 0);
@@ -86,13 +106,6 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
             }
         }
 
-        Comparator<Dot> dotComparator = new Comparator<Dot>() {
-            @Override public int compare(Dot a, Dot b) {
-                if(a.s != b.s)
-                    return a.s - b.s;
-                return a.compareTo(b);   
-            }
-        };
         Set<Dot> frameVisibles = new TreeSet<Dot>(dotComparator);
         Map<Dot,int[]> pos = new TreeMap<Dot,int[]>(dotComparator);
 
@@ -135,7 +148,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
                 }
                 
                 Dot[] gens = backend.gens(y, x+y);
-                Collection<Dot> visibles = new ArrayList<Dot>();
+                Set<Dot> visibles = new TreeSet<Dot>(dotComparator);
                 for(Dot d : gens) if(frameVisibles.contains(d))
                     visibles.add(d);
 
@@ -204,45 +217,57 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
 
     void setSelected(int x, int y)
     {
+        selx = x;
+        sely = y;
         if(x < 0 || y < 0)
             textarea.setText("");
         
-        Dot[] gens = backend.gens(y,x+y);
-        if(gens == null)
+        if(! backend.isComputed(y,x+y)) {
+            textarea.setText("Not yet computed.");
             return;
-        String ret = "("+x+","+y+")\n";
-        if(gens.length > 0) {
-            ret += "Generators:\n";
-            for(Dot d : gens) {
-                if(d.nov != -1 && (d.nov > max_filt || d.nov < min_filt))
-                    continue;
-                ret += "("+x+";"+d.idx+")";
-                if(d.nov != -1)
-                    ret += "(n="+d.nov+")";
-                ret += ":\n      ";
-                ret += d.img.toStringDelim("\n     + ");
-                ret += "\n";
-            }
+        }
+
+        Dot[] gens = backend.gens(y,x+y);
+//        Arrays.sort(gens, dotComparator);
+
+        String ret = "Bidegree ("+x+","+y+")\n";
+        for(Dot d : gens) {
+            ret += "\n";
+            if(d.nov != -1 && (d.nov > max_filt || d.nov < min_filt))
+                continue;
+            ret += "("+x+";"+d.idx+")";
+            if(d.nov != -1)
+                ret += "(n="+d.nov+")";
+            ret += " --->\n      ";
+            ret += d.img.toStringDelim("\n     + ");
         }
         if(textarea != null)
             textarea.setText(ret);
     }
-
-    public void mouseMoved(MouseEvent evt)
+    
+    @Override public void mouseClicked(MouseEvent evt)
     {
-        mx = evt.getX();
-        my = evt.getY();
-
-        int x = getx(mx);
-        int y = gety(my);
+        int x = getx(evt.getX());
+        int y = gety(evt.getY());
+        System.out.printf("clicked %d,%d\n", x, y);
         if(x >= 0 && y >= 0) {
             setSelected(x,y);
         } else {
             setSelected(-1,-1);
         }
     }
+    @Override public void mousePressed(MouseEvent evt) { }
+    @Override public void mouseReleased(MouseEvent evt) { }
+    @Override public void mouseEntered(MouseEvent evt) { }
+    @Override public void mouseExited(MouseEvent evt) { }
 
-    public void mouseDragged(MouseEvent evt)
+    @Override public void mouseMoved(MouseEvent evt)
+    {
+        mx = evt.getX();
+        my = evt.getY();
+    }
+
+    @Override public void mouseDragged(MouseEvent evt)
     {
         int dx = evt.getX() - mx;
         int dy = evt.getY() - my;
@@ -269,7 +294,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener
         
         ResDisplay d = new ResDisplay(back);
         back.register_listener(d);
-        fr.getContentPane().add(d);
+        fr.getContentPane().add(d, BorderLayout.CENTER);
         
         fr.getContentPane().add(new ControlPanel(d), BorderLayout.EAST);
         fr.setVisible(true);
@@ -289,6 +314,7 @@ class ControlPanel extends Box {
         s1.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
                 parent.min_filt = (Integer) s1.getValue();
+                parent.setSelected(parent.selx, parent.sely);
                 parent.repaint();
             }
         });
@@ -296,6 +322,7 @@ class ControlPanel extends Box {
         s2.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
                 parent.max_filt = (Integer) s2.getValue();
+                parent.setSelected(parent.selx, parent.sely);
                 parent.repaint();
             }
         });
@@ -383,11 +410,14 @@ class ControlPanel extends Box {
         add(Box.createVerticalStrut(20));
 
         parent.textarea = new JTextArea();
-        Dimension textdim = new Dimension(250,10000);
-        parent.textarea.setMaximumSize(textdim);
-        parent.textarea.setPreferredSize(textdim);
-        parent.textarea.setAlignmentX(-1.0f);
-        add(parent.textarea);
+        parent.textarea.setMaximumSize(new Dimension(250,3000));
+        parent.textarea.setPreferredSize(new Dimension(250,3000));
+        parent.textarea.setEditable(false);
+        JScrollPane textsp = new JScrollPane(parent.textarea, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        textsp.setMaximumSize(new Dimension(250,3000));
+        textsp.setPreferredSize(new Dimension(250,3000));
+        textsp.setAlignmentX(-1.0f);
+        add(textsp);
     }
 
 }
