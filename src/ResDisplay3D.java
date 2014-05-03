@@ -3,9 +3,12 @@ import java.awt.event.*;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
+import java.util.List; /* for preference over java.awt.List */
 
 class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener
 {
+    final static int TOWER_CUTOFF = 5;
+
     ResBackend backend;
 
     static final double SCALENOTCH = 0.9;
@@ -16,6 +19,10 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
     boolean diff = false;
     boolean cartdiff = true;
     double magnify_n = 1.0;
+    
+    boolean[] hlines = new boolean[] { true, true, false };
+    boolean[] hhide = new boolean[] { false, false, false };
+    boolean[] htowers = new boolean[] { false, false, false };
 
     int mx = -1;
     int my = -1;
@@ -25,6 +32,9 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
     double[][] mtx = {{1,0,0},{0,1,0},{0,0,1}};
     double[] center = new double[] {30,30,0};
     boolean perspective = true;
+    
+    List<Set<Dot>> towers = null;
+    List<Set<Dot>> towergen = null;
 
 
     ResDisplay3D(ResBackend back)
@@ -66,11 +76,12 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         g.drawLine(vts[1][1][0][0], vts[1][1][0][1], vts[1][1][1][0], vts[1][1][1][1]);
 
         /* make sure vertices are up to date */
+        Set<Dot> dots = new TreeSet<Dot>(Dot.fullComparator);
         ArrayList<Vertex> vertices = new ArrayList<Vertex>();
         Map<String, Vertex> tridegs = new HashMap<String, Vertex>();
+        Map<Dot, Vertex> vertexmap = new TreeMap<Dot, Vertex>(Dot.fullComparator);
         for(int x = bounds[0]; x <= bounds[1]; x++) {
             for(int y = bounds[2]; y <= bounds[3]; y++) {
-                if(y == 0) continue;
 
                 Dot[] gens = backend.gens(y, x+y);
                 if(gens == null) break;
@@ -78,6 +89,16 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
                     Dot d = gens[i];
                     if(d.nov < bounds[4] || d.nov > bounds[5])
                         continue;
+
+                    /* hide tower elements */
+                    boolean htower_found = false;
+                    for(int h = 0; h <= 2; h++)
+                        if(htowers[h] && towers != null && towers.get(h).contains(d))
+                            htower_found = true;
+                    if(htower_found)
+                        continue;
+                    
+                    /* XXX TODO hide hopf image */
 
                     int offset = 0;
                     for(int j = i+1; j < gens.length; j++)
@@ -87,16 +108,14 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
                     Vertex v = new Vertex(x, y, i, d.nov);
                     v.offset(offset);
                     v.tp = full_transform(v.p);
+
+                    dots.add(d);
                     vertices.add(v);
                     tridegs.put(trideg_key(x,y,d.nov), v);
+                    vertexmap.put(d, v);
                 }
             } 
         }
-
-        /* draw vertices */
-        g.setColor(Color.black);
-        for(Vertex v : vertices)
-            g.drawRect(v.tp[0] - 1, v.tp[1] - 1, 3, 3);
 
 
         /* draw potential alg Novikov differentials */
@@ -122,6 +141,41 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
                 }
             }
         }
+
+        /* draw multiplications */
+        g.setColor(Color.black);
+        for(int i = 0; i <= 2; i++) if(hlines[i]) {
+            for(Dot d : vertexmap.keySet()) {
+                for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
+                    Vertex v1 = vertexmap.get(d);
+                    Vertex v2 = vertexmap.get(o.base);
+                    if(v2 == null) continue;
+                    g.drawLine(v1.tp[0], v1.tp[1], v2.tp[0], v2.tp[1]);
+                }
+            }
+        }
+
+        /* draw towers */
+        for(int i = 0; i <= 2; i++) if(htowers[i] && towergen != null) {
+            g.setColor(Color.blue);
+            for(Dot d : towergen.get(i)) {
+                Vertex v = vertexmap.get(d);
+                if(v == null) continue;
+
+                double[] destp = new double[] {
+                    v.p[0] + ((1<<i) - 1) * 3.0 / 4.0,
+                    v.p[1] + 0.75,
+                    v.p[2] + (i == 0 ? 0.0 : 0.75),
+                };
+                int[] desttp = full_transform(destp);
+                g.drawLine(v.tp[0], v.tp[1], desttp[0], desttp[1]);
+            }
+        }
+        
+        /* draw vertices */
+        g.setColor(Color.black);
+        for(Vertex v : vertices)
+            g.drawRect(v.tp[0] - 1, v.tp[1] - 1, 3, 3);
     }
 
     @Override public void mouseDragged(MouseEvent evt)
@@ -142,6 +196,9 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
             /* get unit vectors in screen x and y direction */
             double[] vx = Matrices.transform3(mtxinv, new double[]{-1,0,0});
             double[] vy = Matrices.transform3(mtxinv, new double[]{0,-1,0});
+            /* flip one axis */
+            vx[1] *= -1;
+            vy[1] *= -1;
             /* scale them to pixel length */
             for(int i = 0; i < 3; i++) {
                 vx[i] *= dist / viewscale;
@@ -210,9 +267,59 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
             (int) (viewscale * t[1] / (dist + t[2])) + getHeight() / 2
         };
     }
+    
+    private void computeTowers(int tmax)
+    {
+        List<Set<Dot>> newtowers = new ArrayList<Set<Dot>>();
+        List<Set<Dot>> newtowergen = new ArrayList<Set<Dot>>();
+
+        ArrayList<Dot> templist = new ArrayList<Dot>();
+
+        for(int i = 0; i <= 2; i++) {
+            newtowers.add(new TreeSet<Dot>(Dot.fullComparator));
+            newtowergen.add(new TreeSet<Dot>(Dot.fullComparator));
+
+            for(int t = tmax-(1<<i)+1; t <= tmax; t++) for(int s = 0; s <= t; s++) {
+                if(! backend.isComputed(s,t)) break;
+
+                /* for each generator in high degree */
+                for(Dot d : backend.gens(s,t)) {
+                    templist.clear();
+
+                    /* follow it backwards and see if we get a long enough tower */
+                    while(d != null) {
+                        templist.add(d);
+                        Dot d_new = null;
+                        if(d.img != null) {
+                            for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
+                                if(d_new != null)
+                                    System.err.println("Warning: tower fork");
+                                d_new = o.base;
+                            }
+                        }
+                        d = d_new;
+                    }
+
+//                    System.out.printf("h%d tower of length %d\n", i, templist.size());
+                    if(templist.size() < TOWER_CUTOFF)
+                        continue;
+
+                    /* pop the last element back off as a generator */
+                    newtowergen.get(i).add(templist.remove(templist.size() - 1));
+                    /* the rest are tower elements */
+                    newtowers.get(i).addAll(templist);
+                }
+            }
+        }
+
+        towers = newtowers;
+        towergen = newtowergen;
+    }
 
     public void ping(int s, int t)
     {
+        if(s == t && t >= 30)
+            computeTowers(t);
         repaint();
     }
 
@@ -329,6 +436,41 @@ class ControlPanel3D extends Box {
             }
         });
         add(persp);
+        add(Box.createVerticalStrut(20));
+        
+        for(int i = 0; i <= 2; i++) {
+            final int j = i;
+
+            Box h = Box.createHorizontalBox();
+            h.add(new JLabel("h"+i+":"));
+            final JCheckBox hlines = new JCheckBox("lines", parent.hlines[i]);
+            hlines.addActionListener(new ActionListener() {
+                @Override public void actionPerformed(ActionEvent evt) {
+                    parent.hlines[j] = hlines.isSelected();
+                    parent.repaint();
+                }
+            });
+            final JCheckBox hhide = new JCheckBox("hide", parent.hhide[i]);
+            hhide.addActionListener(new ActionListener() {
+                @Override public void actionPerformed(ActionEvent evt) {
+                    parent.hhide[j] = hhide.isSelected();
+                    parent.repaint();
+                }
+            });
+            final JCheckBox htowers = new JCheckBox("towers", parent.htowers[i]);
+            htowers.addActionListener(new ActionListener() {
+                @Override public void actionPerformed(ActionEvent evt) {
+                    parent.htowers[j] = htowers.isSelected();
+                    parent.repaint();
+                }
+            });
+            h.add(hlines);
+            h.add(hhide);
+            h.add(htowers);
+            
+            h.setAlignmentX(-1.0f);
+            add(h);
+        }
         add(Box.createVerticalStrut(20));
 
         final JSlider mag = new JSlider(1,10,1);
