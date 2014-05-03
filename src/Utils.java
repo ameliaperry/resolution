@@ -78,6 +78,18 @@ class Dot implements Comparable<Dot>
     int nov = -1;
     DModSet img;
 
+    static Comparator<Dot> fullComparator = new Comparator<Dot>() {
+        @Override public int compare(Dot a, Dot b) {
+            if(a.s != b.s)
+                return a.s - b.s;
+            if(a.t != b.t)
+                return a.t - b.t;
+            if(a.nov != -1 && b.nov != -1 && a.nov != b.nov)
+                return a.nov - b.nov;
+            return a.compareTo(b);   
+        }
+    };
+
     Dot(Dot base, Sq sq) { /* square dot */
         this.base = base;
         this.sq = sq;
@@ -116,10 +128,16 @@ class Dot implements Comparable<Dot>
         return (d.base.t == base.t && d.base.idx == base.idx && d.sq.equals(sq));
     }
 
+    /*
+     * this comparator is only valid for dots in the same bidegree.
+     * otherwise (e.g. in front-ends), use fullComparator
+     */
     @Override public int compareTo(Dot o)
     {
 //        System.out.printf("compare: %s versus %s\n", a, b);
         /* XXX tweak this for performance */
+//        if(nov != -1 && o.nov != -1 && nov != o.nov)
+//            return o.nov - nov;
         if(base.t != o.base.t)
             return base.t - o.base.t;
         if(base.idx != o.base.idx)
