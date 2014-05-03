@@ -145,7 +145,7 @@ class ResParallelizedBackend implements ResBackend
         print_result(t);
         if(Config.STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gens.length, dat.kbasis.length);
         if(listener != null)
-            listener.ping();
+            listener.ping(s,t);
 
         if(Config.TIMING && s == t) {
             long elapsed = System.currentTimeMillis() - start;

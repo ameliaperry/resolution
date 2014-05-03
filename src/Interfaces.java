@@ -9,5 +9,5 @@ interface ResBackend {
 }
 
 interface PingListener {
-    void ping();
+    void ping(int s, int t);
 }

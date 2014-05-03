@@ -281,7 +281,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
         repaint();
     }
 
-    public void ping()
+    public void ping(int s, int t)
     {
         repaint();
     }
