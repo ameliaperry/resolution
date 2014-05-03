@@ -3,10 +3,13 @@ import java.awt.event.*;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
+import java.util.List; /* for precedence over java.awt.List */
 
 class ResDisplay extends JPanel implements PingListener, MouseMotionListener, MouseListener
 {
     final static int BLOCK_WIDTH = 30;
+
+    final static int TOWER_CUTOFF = 5;
 
     ResBackend backend;
 
@@ -18,6 +21,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
 
     boolean[] hlines = new boolean[] { true, true, false };
     boolean[] hhide = new boolean[] { false, false, false };
+    boolean[] htowers = new boolean[] { false, false, false };
 
     int viewx = 30;
     int viewy = -40;
@@ -25,18 +29,11 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
     int sely = -1;
     int mx = -1;
     int my = -1;
+        
+    List<Set<Dot>> towers = null;
+    List<Set<Dot>> towergen = null;
 
     JTextArea textarea = null;
-
-    static Comparator<Dot> dotComparator = new Comparator<Dot>() {
-        @Override public int compare(Dot a, Dot b) {
-            if(a.s != b.s)
-                return a.s - b.s;
-            if(a.nov != -1 && b.nov != -1 && a.nov != b.nov)
-                return a.nov - b.nov;
-            return a.compareTo(b);   
-        }
-    };
 
     ResDisplay(ResBackend back)
     {
@@ -70,6 +67,9 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
             for(Dot o : d.img.keySet())
                 if(o.sq.equals(Sq.HOPF[i]))
                     return false; /* risky -- we can have joint h_i multiples */
+        for(int i = 0; i <= 2; i++) if(htowers[i] && towers != null)
+            if(towers.get(i).contains(d))
+                return false;
         return true;
     }
 
@@ -106,8 +106,8 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
             }
         }
 
-        Set<Dot> frameVisibles = new TreeSet<Dot>(dotComparator);
-        Map<Dot,int[]> pos = new TreeMap<Dot,int[]>(dotComparator);
+        Set<Dot> frameVisibles = new TreeSet<Dot>(Dot.fullComparator);
+        Map<Dot,int[]> pos = new TreeMap<Dot,int[]>(Dot.fullComparator);
 
         /* assign dots a location */
         for(int x = 0; ; x++) {
@@ -148,7 +148,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
                 }
                 
                 Dot[] gens = backend.gens(y, x+y);
-                Set<Dot> visibles = new TreeSet<Dot>(dotComparator);
+                Set<Dot> visibles = new TreeSet<Dot>(Dot.fullComparator);
                 for(Dot d : gens) if(frameVisibles.contains(d))
                     visibles.add(d);
 
@@ -159,10 +159,18 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
                         int[] src = pos.get(d);
                         for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i]) && frameVisibles.contains(o.base)) {
                             int[] dest = pos.get(o.base);
-                            if(src == null) System.err.printf("src is null, dot %s, s=%d\n", d, d.s);
-                            if(dest == null) System.err.printf("dest is null, dot %s, s=%d\n", o, o.s);
                             g.drawLine(src[0], src[1], dest[0], dest[1]);
                         }
+                    }
+                }
+                
+                /* draw towers */
+                for(int i = 0; i <= 2; i++) if(htowers[i] && towergen != null) {
+                    g.setColor(Color.blue);
+                    for(Dot d : towergen.get(i)) if(frameVisibles.contains(d)) {
+                        int[] src = pos.get(d);
+                        int[] dest = new int[] { src[0] + ((1 << i) - 1) * BLOCK_WIDTH * 3 / 4, src[1] - BLOCK_WIDTH * 3 / 4 };
+                        g.drawLine(src[0], src[1], dest[0], dest[1]);
                     }
                 }
 
@@ -178,8 +186,6 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
                             for(Dot o : ogen)
                                 if(o.nov == d.nov + 1 && frameVisibles.contains(o)) {
                                     int[] dest = pos.get(o);
-                                    if(src == null) System.err.printf("src is null, dot %s, s=%d\n", d, d.s);
-                                    if(dest == null) System.err.printf("dest is null, dot %s, s=%d\n", o, o.s);
                                     g.drawLine(src[0], src[1], dest[0], dest[1]);
                                 }
                         }
@@ -219,8 +225,11 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
     {
         selx = x;
         sely = y;
-        if(x < 0 || y < 0)
+        repaint();
+        if(x < 0 || y < 0) {
             textarea.setText("");
+            return;
+        }
         
         if(! backend.isComputed(y,x+y)) {
             textarea.setText("Not yet computed.");
@@ -228,7 +237,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
         }
 
         Dot[] gens = backend.gens(y,x+y);
-//        Arrays.sort(gens, dotComparator);
+//        Arrays.sort(gens, Dot.fullComparator);
 
         String ret = "Bidegree ("+x+","+y+")\n";
         for(Dot d : gens) {
@@ -244,12 +253,60 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
         if(textarea != null)
             textarea.setText(ret);
     }
+
+    private void computeTowers(int tmax)
+    {
+        List<Set<Dot>> newtowers = new ArrayList<Set<Dot>>();
+        List<Set<Dot>> newtowergen = new ArrayList<Set<Dot>>();
+
+        ArrayList<Dot> templist = new ArrayList<Dot>();
+
+        for(int i = 0; i <= 2; i++) {
+            newtowers.add(new TreeSet<Dot>(Dot.fullComparator));
+            newtowergen.add(new TreeSet<Dot>(Dot.fullComparator));
+
+            for(int t = tmax-(1<<i)+1; t <= tmax; t++) for(int s = 0; s <= t; s++) {
+                if(! backend.isComputed(s,t)) break;
+
+                /* for each generator in high degree */
+                for(Dot d : backend.gens(s,t)) {
+                    templist.clear();
+
+                    /* follow it backwards and see if we get a long enough tower */
+                    while(d != null) {
+                        templist.add(d);
+                        Dot d_new = null;
+                        if(d.img != null) {
+                            for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
+                                if(d_new != null)
+                                    System.err.println("Warning: tower fork");
+                                d_new = o.base;
+                            }
+                        }
+                        d = d_new;
+                    }
+
+//                    System.out.printf("h%d tower of length %d\n", i, templist.size());
+                    if(templist.size() < TOWER_CUTOFF)
+                        continue;
+
+                    /* pop the last element back off as a generator */
+                    newtowergen.get(i).add(templist.remove(templist.size() - 1));
+                    /* the rest are tower elements */
+                    newtowers.get(i).addAll(templist);
+                }
+            }
+        }
+
+        towers = newtowers;
+        towergen = newtowergen;
+    }
+
     
     @Override public void mouseClicked(MouseEvent evt)
     {
         int x = getx(evt.getX());
         int y = gety(evt.getY());
-        System.out.printf("clicked %d,%d\n", x, y);
         if(x >= 0 && y >= 0) {
             setSelected(x,y);
         } else {
@@ -283,6 +340,8 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
 
     public void ping(int s, int t)
     {
+        if(s == t && t >= 30)
+            computeTowers(t);
         repaint();
     }
 
@@ -401,8 +460,16 @@ class ControlPanel extends Box {
                     parent.repaint();
                 }
             });
+            final JCheckBox htowers = new JCheckBox("towers", parent.htowers[i]);
+            htowers.addActionListener(new ActionListener() {
+                @Override public void actionPerformed(ActionEvent evt) {
+                    parent.htowers[j] = htowers.isSelected();
+                    parent.repaint();
+                }
+            });
             h.add(hlines);
             h.add(hhide);
+            h.add(htowers);
             
             h.setAlignmentX(-1.0f);
             add(h);
