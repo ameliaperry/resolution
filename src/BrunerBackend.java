@@ -9,6 +9,9 @@ class BrunerBackend implements ResBackend
 {
     PingListener listener = null;
 
+//    AMod module = new Sphere();
+    AMod module = new CofibEta();
+
     HashMap<Integer,BrunerCellData> output = new HashMap<Integer,BrunerCellData>();
     static Integer keystr(int s, int t) {
         return (s<<16) ^ t;
@@ -99,21 +102,18 @@ class BrunerBackend implements ResBackend
         }
     }
 
+    
+    /* math */
 
     void compute(int s, int t)
     {
         if(Config.DEBUG) System.out.printf("(%d,%d)\n", s,t);
         /* get the old kernel basis */
         BrunerCellData olddat = dat(s-1, t);
-        Collection<DModSet> okbasis;
-        if(s == 0 && t == 0) {
-            okbasis = new ArrayList<DModSet>();
-            Dot first = new Dot(0,0,0);
-            first.nov = 0;
-            okbasis.add(new DModSet(first));
-        }
-        else if(s == 0)
-            okbasis = new ArrayList<DModSet>();
+        Iterable<DModSet> okbasis;
+        
+        if(s == 0)
+            okbasis = module.basis_wrap(t);
         else
             okbasis = olddat.kbasis;
 
@@ -132,7 +132,7 @@ class BrunerBackend implements ResBackend
                     /* compute the image */
                     DModSet dx;
                     if(s > 0) dx = b.img.times(q);
-                    else dx = new DModSet();
+                    else dx = b.img.times(q, module);
                     if(Config.DEBUG) System.out.printf("1: %s --> %s", x, dx);
 
                     /* reduce against the existing image */
@@ -222,7 +222,6 @@ class BrunerBackend implements ResBackend
         BrunerCellData dat = new BrunerCellData(gens.toArray(new Dot[] {}), ker);
         putOutput(s, t, dat);
 
-        print_result(t);
         if(Config.STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gens.length, dat.kbasis.size());
         if(listener != null)
             listener.ping(s,t);
@@ -244,23 +243,13 @@ class BrunerBackend implements ResBackend
     }
     
 
+    /* admin */
 
-    private void print_result(int s_max)
+    public void setModule(AMod m)
     {
-        if(!Config.STDOUT) return;
-        for(int s = s_max; s >= 0; s--) {
-            for(int t = s; ; t++) {
-                int n = ngens(s,t);
-                if(n < 0) break;
-                if(n > 0)
-                    System.out.printf("%2d ", n);
-                else
-                    System.out.print("   ");
-            }
-            System.out.println("###");
-        }
+        Main.die_if(isComputed(0,0), "Attempted to change resolving module after computation began.");
+        module = m;
     }
-
 
     public void register_listener(PingListener p)
     {

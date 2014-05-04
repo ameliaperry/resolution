@@ -173,4 +173,17 @@ class DModSet extends ModSet<Dot> { /* to work around generic array restrictions
         }
         return ret;
     }
+    
+    public DModSet times(Sq sq, AMod module)
+    {
+        DModSet ret = new DModSet();
+        for(Map.Entry<Dot,Integer> e1 : entrySet()) {
+            Dot d = e1.getKey();
+            DModSet prod = module.act(d, sq);
+            for(Map.Entry<Dot,Integer> e2 : prod.entrySet()) {
+                ret.add(e2.getKey(), e1.getValue() * e2.getValue());
+            }
+        }
+        return ret;
+    }
 }

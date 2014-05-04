@@ -1,25 +1,71 @@
 import java.util.*;
 
-interface AMod<T>
+abstract class AMod
 {
-    Iterable<T> basis(int deg);
-    ModSet<T> act(T t, Sq sq);
+    abstract Iterable<Dot> basis(int deg);
+    abstract DModSet act(Dot o, Sq sq);
+
+    public Iterable<DModSet> basis_wrap(final int deg)
+    {
+        return new Iterable<DModSet>() {
+            @Override public Iterator<DModSet> iterator() {
+                return new Iterator<DModSet>() {
+                    Iterator<Dot> underlying = basis(deg).iterator();
+                    @Override public boolean hasNext() { return underlying.hasNext(); }
+                    @Override public DModSet next() { return new DModSet(underlying.next()); }
+                    @Override public void remove() { underlying.remove(); }
+                };
+            }
+        };
+    }
 }
 
-class Sphere implements AMod<Object>
+class Sphere extends AMod
 {
-    @Override public Iterable<Object> basis(int deg) {
-        List<Object> ret = new ArrayList<Object>();
+    Dot d = new Dot(-1,0,0);
+    Sphere() {
+        d = new Dot(-1,0,0);
+        d.nov = 0;
+    }
+
+    @Override public Iterable<Dot> basis(int deg) {
+        List<Dot> ret = new ArrayList<Dot>();
         if(deg == 0)
-            ret.add(new Object());
+            ret.add(d);
         return ret;
     }
 
-    @Override public ModSet<Object> act(Object o, Sq sq)
+    @Override public DModSet act(Dot o, Sq sq)
     {
-        ModSet<Object> ret = new ModSet<Object>();
+        DModSet ret = new DModSet();
         if(sq.equals(Sq.ID))
-            ret.add(o,1);
+            ret.add(d,1);
+        return ret;
+    }
+}
+
+class CofibEta extends AMod
+{
+    Dot d1 = new Dot(-1,0,0);
+    Dot d2 = new Dot(d1, Sq.HOPF[0]);
+    @Override public Iterable<Dot> basis(int deg) {
+        List<Dot> ret = new ArrayList<Dot>();
+        if(deg == 0)
+            ret.add(d1);
+        if(deg == Sq.HOPF[0].deg())
+            ret.add(d2);
+        return ret;
+    }
+
+    @Override public DModSet act(Dot o, Sq sq)
+    {
+        DModSet ret = new DModSet();
+        if(o.t == d1.t && sq.equals(Sq.ID))
+            ret.add(d1,1);
+        if(o.t == d2.t && sq.equals(Sq.ID))
+            ret.add(d2,1);
+        if(o.t == d1.t && sq.equals(Sq.HOPF[0]))
+            ret.add(d2,1);
         return ret;
     }
 }
