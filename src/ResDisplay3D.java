@@ -286,14 +286,14 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
                 for(Dot d : backend.gens(s,t)) {
                     templist.clear();
 
+                    boolean fork = false;
                     /* follow it backwards and see if we get a long enough tower */
                     while(d != null) {
                         templist.add(d);
                         Dot d_new = null;
                         if(d.img != null) {
                             for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
-                                if(d_new != null)
-                                    System.err.println("Warning: tower fork");
+                                if(d_new != null) fork = true;
                                 d_new = o.base;
                             }
                         }
@@ -303,6 +303,9 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
 //                    System.out.printf("h%d tower of length %d\n", i, templist.size());
                     if(templist.size() < TOWER_CUTOFF)
                         continue;
+                    
+                    if(fork)
+                        System.err.println("Warning: tower fork");
 
                     /* pop the last element back off as a generator */
                     newtowergen.get(i).add(templist.remove(templist.size() - 1));
