@@ -9,8 +9,7 @@ class BrunerBackend implements ResBackend
 {
     PingListener listener = null;
 
-//    AMod module = new Sphere();
-    AMod module = new CofibEta();
+    AMod module = new Sphere();
 
     HashMap<Integer,BrunerCellData> output = new HashMap<Integer,BrunerCellData>();
     static Integer keystr(int s, int t) {

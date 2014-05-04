@@ -44,15 +44,21 @@ class Sphere extends AMod
     }
 }
 
-class CofibEta extends AMod
+class CofibHopf extends AMod
 {
-    Dot d1 = new Dot(-1,0,0);
-    Dot d2 = new Dot(d1, Sq.HOPF[0]);
+    int i;
+    Dot d1, d2;
+    CofibHopf(int i) {
+        this.i = i;
+        d1 = new Dot(-1,0,0);
+        d2 = new Dot(d1, Sq.HOPF[i]);
+    }
+
     @Override public Iterable<Dot> basis(int deg) {
         List<Dot> ret = new ArrayList<Dot>();
         if(deg == 0)
             ret.add(d1);
-        if(deg == Sq.HOPF[0].deg())
+        if(deg == d2.t)
             ret.add(d2);
         return ret;
     }
@@ -64,7 +70,7 @@ class CofibEta extends AMod
             ret.add(d1,1);
         if(o.t == d2.t && sq.equals(Sq.ID))
             ret.add(d2,1);
-        if(o.t == d1.t && sq.equals(Sq.HOPF[0]))
+        if(o.t == d1.t && sq.equals(Sq.HOPF[i]))
             ret.add(d2,1);
         return ret;
     }

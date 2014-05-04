@@ -6,7 +6,8 @@ class Sq implements Comparable<Sq>
     public static final Sq[] HOPF = new Sq[] {
         new Sq(new int[] {1}),
         new Sq(new int[] {Config.Q}),
-        new Sq(new int[] {2*Config.Q})
+        new Sq(new int[] {Config.P*Config.Q}),
+        new Sq(new int[] {Config.P*Config.P*Config.Q})
     };
 
     int[] q; /* Indices of the power operations.
