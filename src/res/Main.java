@@ -1,7 +1,12 @@
+package res;
 
-class Main {
+import res.algebra.*;
+import res.backend.*;
+import res.frontend.*;
+
+public class Main {
     
-    static void die_if(boolean test, String fail)
+    public static void die_if(boolean test, String fail)
     {
         if(test) {
             System.err.println(fail);
@@ -15,6 +20,8 @@ class Main {
     {
         String s;
         SettingsDialog sd = new SettingsDialog();
+        sd.setVisible(true); /* blocks until dialog has completed */
+
         if(sd.cancelled)
             System.exit(0);
 
@@ -32,31 +39,31 @@ class Main {
         /* threads */
         Config.THREADS = (Integer) sd.threads.getValue();
 
+        /* at some point we'll have to think about how to do this process in a properly generic way */
+
+        /* algebra */
+        GradedAlgebra<Sq> alg = new SteenrodAlgebra();
+
         /* backend */
-        ResBackend back;
-        s = sd.back.getSelection().getActionCommand();
-        if(s == SettingsDialog.BACKOLD)
-            back = new ResParallelizedBackend();
-        else
-            back = new BrunerBackend();
+        BrunerBackend<Sq> back;
+//        s = sd.back.getSelection().getActionCommand();
+        back = new BrunerBackend<Sq>(alg);
 
         /* module */
-        AMod mod;
+        GradedModule<Sq> mod;
         s = (String) sd.modcombo.getSelectedItem();
         if(s == SettingsDialog.MODCOF2)
-            mod = new CofibHopf(0);
+            mod = new CofibHopf(0,alg);
         else if(s == SettingsDialog.MODCOFETA)
-            mod = new CofibHopf(1);
+            mod = new CofibHopf(1,alg);
         else if(s == SettingsDialog.MODCOFNU)
-            mod = new CofibHopf(2);
+            mod = new CofibHopf(2,alg);
         else if(s == SettingsDialog.MODCOFSIGMA)
-            mod = new CofibHopf(3);
+            mod = new CofibHopf(3,alg);
         else
-            mod = new Sphere();
+            mod = new Sphere<Sq>(alg);
 
-        /* ugly way to set a module. TODO change interface */
-        if(back instanceof BrunerBackend)
-            ((BrunerBackend) back).setModule(mod);
+        back.setModule(mod);
 
         /* frontend */
         s = sd.front.getSelection().getActionCommand();

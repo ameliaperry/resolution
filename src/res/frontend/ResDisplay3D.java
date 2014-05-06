@@ -1,3 +1,8 @@
+package res.frontend;
+
+import res.*;
+import res.algebra.Sq;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -5,11 +10,11 @@ import javax.swing.*;
 import javax.swing.event.*;
 import java.util.List; /* for preference over java.awt.List */
 
-class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener
+public class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener
 {
     final static int TOWER_CUTOFF = 5;
 
-    ResBackend backend;
+    private Backend<Sq> backend;
 
     static final double SCALENOTCH = 0.9;
     static final double SCALEPIX = 0.994;
@@ -33,23 +38,23 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
     double[] center = new double[] {30,30,0};
     boolean perspective = true;
     
-    List<Set<Dot>> towers = null;
-    List<Set<Dot>> towergen = null;
+    List<Set<Generator<Sq>>> towers = null;
+    List<Set<Generator<Sq>>> towergen = null;
 
 
-    ResDisplay3D(ResBackend back)
+    private ResDisplay3D(Backend<Sq> back)
     {
         backend = back;
         addMouseMotionListener(this);
         addMouseWheelListener(this);
     }
 
-    String trideg_key(int x, int y, int n)
+    private String trideg_key(int x, int y, int n)
     {
         return x + "/" + y + "/" + n;
     }
 
-    public void paintComponent(Graphics g)
+    @Override public void paintComponent(Graphics g)
     {
         super.paintComponent(g);
 
@@ -76,17 +81,17 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         g.drawLine(vts[1][1][0][0], vts[1][1][0][1], vts[1][1][1][0], vts[1][1][1][1]);
 
         /* make sure vertices are up to date */
-        Set<Dot> dots = new TreeSet<Dot>(Dot.fullComparator);
+        Set<Generator<Sq>> dots = new TreeSet<Generator<Sq>>();
         ArrayList<Vertex> vertices = new ArrayList<Vertex>();
         Map<String, Vertex> tridegs = new HashMap<String, Vertex>();
-        Map<Dot, Vertex> vertexmap = new TreeMap<Dot, Vertex>(Dot.fullComparator);
+        Map<Generator<Sq>, Vertex> vertexmap = new TreeMap<Generator<Sq>, Vertex>();
         for(int x = bounds[0]; x <= bounds[1]; x++) {
             for(int y = bounds[2]; y <= bounds[3]; y++) {
 
-                Dot[] gens = backend.gens(y, x+y);
+                Collection<Generator<Sq>> gens = backend.gens(y, x+y);
                 if(gens == null) break;
-                for(int i = 0; i < gens.length; i++) {
-                    Dot d = gens[i];
+                
+                for(Generator<Sq> d : gens) {
                     if(d.nov < bounds[4] || d.nov > bounds[5])
                         continue;
 
@@ -101,11 +106,11 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
                     /* XXX TODO hide hopf image */
 
                     int offset = 0;
-                    for(int j = i+1; j < gens.length; j++)
-                        if(gens[j].nov == d.nov)
+                    for(Generator<Sq> o : gens)
+                        if(o.nov == d.nov && o.idx > d.idx)
                             offset++;
 
-                    Vertex v = new Vertex(x, y, i, d.nov);
+                    Vertex v = new Vertex(x, y, d.idx, d.nov);
                     v.offset(offset);
                     v.tp = full_transform(v.p);
 
@@ -145,8 +150,8 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         /* draw multiplications */
         g.setColor(Color.black);
         for(int i = 0; i <= 2; i++) if(hlines[i]) {
-            for(Dot d : vertexmap.keySet()) {
-                for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
+            for(Generator<Sq> d : vertexmap.keySet()) {
+                for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
                     Vertex v1 = vertexmap.get(d);
                     Vertex v2 = vertexmap.get(o.base);
                     if(v2 == null) continue;
@@ -158,7 +163,7 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         /* draw towers */
         for(int i = 0; i <= 2; i++) if(htowers[i] && towergen != null) {
             g.setColor(Color.blue);
-            for(Dot d : towergen.get(i)) {
+            for(Generator<Sq> d : towergen.get(i)) {
                 Vertex v = vertexmap.get(d);
                 if(v == null) continue;
 
@@ -236,13 +241,13 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         repaint();
     }
 
-    public void mouseMoved(MouseEvent evt)
+    @Override public void mouseMoved(MouseEvent evt)
     {
         mx = evt.getX();
         my = evt.getY();
     }
 
-    int[] full_transform(double[] p)
+    private int[] full_transform(double[] p)
     {
         /* magnify n */
         p[2] *= magnify_n;
@@ -270,29 +275,29 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
     
     private void computeTowers(int tmax)
     {
-        List<Set<Dot>> newtowers = new ArrayList<Set<Dot>>();
-        List<Set<Dot>> newtowergen = new ArrayList<Set<Dot>>();
+        List<Set<Generator<Sq>>> newtowers = new ArrayList<Set<Generator<Sq>>>();
+        List<Set<Generator<Sq>>> newtowergen = new ArrayList<Set<Generator<Sq>>>();
 
-        ArrayList<Dot> templist = new ArrayList<Dot>();
+        ArrayList<Generator<Sq>> templist = new ArrayList<Generator<Sq>>();
 
         for(int i = 0; i <= 2; i++) {
-            newtowers.add(new TreeSet<Dot>(Dot.fullComparator));
-            newtowergen.add(new TreeSet<Dot>(Dot.fullComparator));
+            newtowers.add(new TreeSet<Generator<Sq>>());
+            newtowergen.add(new TreeSet<Generator<Sq>>());
 
             for(int t = tmax-(1<<i)+1; t <= tmax; t++) for(int s = 0; s <= t; s++) {
                 if(! backend.isComputed(s,t)) break;
 
                 /* for each generator in high degree */
-                for(Dot d : backend.gens(s,t)) {
+                for(Generator<Sq> d : backend.gens(s,t)) {
                     templist.clear();
 
                     boolean fork = false;
                     /* follow it backwards and see if we get a long enough tower */
                     while(d != null) {
                         templist.add(d);
-                        Dot d_new = null;
+                        Generator<Sq> d_new = null;
                         if(d.img != null) {
-                            for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
+                            for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
                                 if(d_new != null) fork = true;
                                 d_new = o.base;
                             }
@@ -319,14 +324,14 @@ class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, 
         towergen = newtowergen;
     }
 
-    public void ping(int s, int t)
+    @Override public void ping(int s, int t)
     {
         if(s == t && t >= 30)
             computeTowers(t);
         repaint();
     }
 
-    public static void constructFrontend(ResBackend back) 
+    public static void constructFrontend(Backend<Sq> back) 
     {
         JFrame fr = new JFrame("Resolution 3D");
         fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

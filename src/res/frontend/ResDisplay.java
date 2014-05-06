@@ -1,3 +1,7 @@
+package res.frontend;
+
+import res.*;
+import res.algebra.Sq;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -5,13 +9,13 @@ import javax.swing.*;
 import javax.swing.event.*;
 import java.util.List; /* for precedence over java.awt.List */
 
-class ResDisplay extends JPanel implements PingListener, MouseMotionListener, MouseListener
+public class ResDisplay extends JPanel implements PingListener, MouseMotionListener, MouseListener
 {
     final static int BLOCK_WIDTH = 30;
 
     final static int TOWER_CUTOFF = 5;
 
-    ResBackend backend;
+    Backend<Sq> backend;
 
     int min_filt = 0;
     int max_filt = 5;
@@ -30,50 +34,50 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
     int mx = -1;
     int my = -1;
         
-    List<Set<Dot>> towers = null;
-    List<Set<Dot>> towergen = null;
+    List<Set<Generator<Sq>>> towers = null;
+    List<Set<Generator<Sq>>> towergen = null;
 
     JTextArea textarea = null;
 
-    ResDisplay(ResBackend back)
+    private ResDisplay(Backend<Sq> back)
     {
         backend = back;
         addMouseListener(this);
         addMouseMotionListener(this);
     }
 
-    int getcx(int x) {
+    private int getcx(int x) {
         return BLOCK_WIDTH * x + viewx;
     }
-    int getcy(int y) {
+    private int getcy(int y) {
         return getHeight() - BLOCK_WIDTH * y + viewy;
     }
-    int getx(int cx) {
+    private int getx(int cx) {
         cx -= viewx;
         cx += BLOCK_WIDTH/2;
         return cx / BLOCK_WIDTH;
     }
-    int gety(int cy) {
+    private int gety(int cy) {
         cy = cy - getHeight() - viewy;
         cy = -cy;
         cy += BLOCK_WIDTH/2;
         return cy / BLOCK_WIDTH;
     }
 
-    boolean isVisible(Dot d) {
+    private boolean isVisible(Generator<Sq> d) {
         if(d.nov != -1 && (d.nov < min_filt || d.nov > max_filt))
             return false;
         for(int i = 0; i <= 2; i++) if(hhide[i])
-            for(Dot o : d.img.keySet())
+            for(Dot<Sq> o : d.img.keySet())
                 if(o.sq.equals(Sq.HOPF[i]))
-                    return false; /* risky -- we can have joint h_i multiples */
+                    return false; /* XXX risky -- we can have joint h_i multiples */
         for(int i = 0; i <= 2; i++) if(htowers[i] && towers != null)
             if(towers.get(i).contains(d))
                 return false;
         return true;
     }
 
-    public void paintComponent(Graphics g)
+    @Override public void paintComponent(Graphics g)
     {
         super.paintComponent(g);
 
@@ -106,8 +110,9 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
             }
         }
 
-        Set<Dot> frameVisibles = new TreeSet<Dot>(Dot.fullComparator);
-        Map<Dot,int[]> pos = new TreeMap<Dot,int[]>(Dot.fullComparator);
+        Set<Generator<Sq>> frameVisibles = new TreeSet<Generator<Sq>>();
+        Map<Generator<Sq>,int[]> pos = new TreeMap<Generator<Sq>,int[]>();
+
 
         /* assign dots a location */
         for(int x = 0; ; x++) {
@@ -115,18 +120,19 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
             for(y = 0; ; y++) {
                 if(!backend.isComputed(y,x+y))
                     break;
+        
+                Collection<Generator<Sq>> gens = backend.gens(y,x+y);
 
                 int cx = getcx(x);
                 int cy = getcy(y);
 
-                Dot[] gens = backend.gens(y, x+y);
                 int visible = 0;
-                for(Dot d : gens) if(isVisible(d)) {
+                for(Generator<Sq> d : gens) if(isVisible(d)) {
                     frameVisibles.add(d);
                     visible++;
                 }
                 int offset = -5 * visible / 2;
-                for(Dot d : gens) if(frameVisibles.contains(d)) {
+                for(Generator<Sq> d : gens) if(frameVisibles.contains(d)) {
                     pos.put(d, new int[] { cx + offset, cy - offset/2 });
                     offset += 5;
                 }
@@ -147,17 +153,18 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
                     continue;
                 }
                 
-                Dot[] gens = backend.gens(y, x+y);
-                Set<Dot> visibles = new TreeSet<Dot>(Dot.fullComparator);
-                for(Dot d : gens) if(frameVisibles.contains(d))
+                Collection<Generator<Sq>> gens = backend.gens(y,x+y);
+                
+                Set<Generator<Sq>> visibles = new TreeSet<Generator<Sq>>();
+                for(Generator<Sq> d : gens) if(frameVisibles.contains(d))
                     visibles.add(d);
 
                 /* draw multiplications */
                 for(int i = 0; i <= 2; i++) if(hlines[i]) {
                     g.setColor(Color.black);
-                    for(Dot d : visibles) {
+                    for(Generator<Sq> d : visibles) {
                         int[] src = pos.get(d);
-                        for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i]) && frameVisibles.contains(o.base)) {
+                        for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i]) && frameVisibles.contains(o.base)) {
                             int[] dest = pos.get(o.base);
                             g.drawLine(src[0], src[1], dest[0], dest[1]);
                         }
@@ -167,7 +174,7 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
                 /* draw towers */
                 for(int i = 0; i <= 2; i++) if(htowers[i] && towergen != null) {
                     g.setColor(Color.blue);
-                    for(Dot d : towergen.get(i)) if(frameVisibles.contains(d)) {
+                    for(Generator<Sq> d : towergen.get(i)) if(frameVisibles.contains(d)) {
                         int[] src = pos.get(d);
                         int[] dest = new int[] { src[0] + ((1 << i) - 1) * BLOCK_WIDTH * 3 / 4, src[1] - BLOCK_WIDTH * 3 / 4 };
                         g.drawLine(src[0], src[1], dest[0], dest[1]);
@@ -180,10 +187,10 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
                     for(int j = 2; ; j++) {
                         if(! backend.isComputed(y+j, x-1 + y+j))
                             break;
-                        Dot[] ogen = backend.gens(y+j, x-1 + y+j);
-                        for(Dot d : visibles) {
+                        Collection<Generator<Sq>> ogen = backend.gens(y+j, x-1 + y+j);
+                        for(Generator<Sq> d : visibles) {
                             int[] src = pos.get(d);
-                            for(Dot o : ogen)
+                            for(Generator<Sq> o : ogen)
                                 if(o.nov == d.nov + 1 && frameVisibles.contains(o)) {
                                     int[] dest = pos.get(o);
                                     g.drawLine(src[0], src[1], dest[0], dest[1]);
@@ -195,11 +202,11 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
                 /* draw potential Cartan differentials */
                 if(cartdiff && x >= 1 && backend.isComputed(y+1, y+1 + x-1)) {
                     g.setColor(Color.red);
-                    Dot[] ogen = backend.gens(y+1, y+1 + x-1);
+                    Collection<Generator<Sq>> ogen = backend.gens(y+1, y+1 + x-1);
 
-                    for(Dot o : ogen) if(frameVisibles.contains(o)) {
+                    for(Generator<Sq> o : ogen) if(frameVisibles.contains(o)) {
                         int[] dest = pos.get(o);
-                        for(Dot d : visibles)
+                        for(Generator<Sq> d : visibles)
                             if(o.nov >= d.nov + 2) {
                                 int[] src = pos.get(d);
                                 if(src == null) System.err.printf("src is null, dot %s, s=%d\n", d, d.s);
@@ -236,11 +243,11 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
             return;
         }
 
-        Dot[] gens = backend.gens(y,x+y);
-//        Arrays.sort(gens, Dot.fullComparator);
+        Collection<Generator<Sq>> gens = backend.gens(y,x+y);
+//        Arrays.sort(gens);
 
         String ret = "Bidegree ("+x+","+y+")\n";
-        for(Dot d : gens) {
+        for(Generator<Sq> d : gens) {
             ret += "\n";
             if(d.nov != -1 && (d.nov > max_filt || d.nov < min_filt))
                 continue;
@@ -256,29 +263,29 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
 
     private void computeTowers(int tmax)
     {
-        List<Set<Dot>> newtowers = new ArrayList<Set<Dot>>();
-        List<Set<Dot>> newtowergen = new ArrayList<Set<Dot>>();
+        List<Set<Generator<Sq>>> newtowers = new ArrayList<Set<Generator<Sq>>>();
+        List<Set<Generator<Sq>>> newtowergen = new ArrayList<Set<Generator<Sq>>>();
 
-        ArrayList<Dot> templist = new ArrayList<Dot>();
+        ArrayList<Generator<Sq>> templist = new ArrayList<Generator<Sq>>();
 
         for(int i = 0; i <= 2; i++) {
-            newtowers.add(new TreeSet<Dot>(Dot.fullComparator));
-            newtowergen.add(new TreeSet<Dot>(Dot.fullComparator));
+            newtowers.add(new TreeSet<Generator<Sq>>());
+            newtowergen.add(new TreeSet<Generator<Sq>>());
 
             for(int t = tmax-(1<<i)+1; t <= tmax; t++) for(int s = 0; s <= t; s++) {
                 if(! backend.isComputed(s,t)) break;
 
                 /* for each generator in high degree */
-                for(Dot d : backend.gens(s,t)) {
+                for(Generator<Sq> d : backend.gens(s,t)) {
                     templist.clear();
 
                     boolean fork = false;
                     /* follow it backwards and see if we get a long enough tower */
                     while(d != null) {
                         templist.add(d);
-                        Dot d_new = null;
+                        Generator<Sq> d_new = null;
                         if(d.img != null) {
-                            for(Dot o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
+                            for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
                                 if(d_new != null) fork = true;
                                 d_new = o.base;
                             }
@@ -341,14 +348,14 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
         repaint();
     }
 
-    public void ping(int s, int t)
+    @Override public void ping(int s, int t)
     {
         if(s == t && t >= 30)
             computeTowers(t);
         repaint();
     }
 
-    public static void constructFrontend(ResBackend back) 
+    public static void constructFrontend(Backend<Sq> back) 
     {
         JFrame fr = new JFrame("Resolution");
         fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -358,15 +365,15 @@ class ResDisplay extends JPanel implements PingListener, MouseMotionListener, Mo
         back.register_listener(d);
         fr.getContentPane().add(d, BorderLayout.CENTER);
         
-        fr.getContentPane().add(new ControlPanel(d), BorderLayout.EAST);
+        fr.getContentPane().add(new ControlPanel2D(d), BorderLayout.EAST);
         fr.setVisible(true);
     }
 
 }
 
-class ControlPanel extends Box {
+class ControlPanel2D extends Box {
 
-    ControlPanel(final ResDisplay parent)
+    ControlPanel2D(final ResDisplay parent)
     {
         super(BoxLayout.Y_AXIS);
 

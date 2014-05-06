@@ -1,0 +1,28 @@
+Algorithms
+* multiply steenrod squares in a more cacheable way
+
+Code
+* (n)-graded algebra
+
+Re-negotiate interface
+* displays a graded / bi-graded / tri-graded vector space.
+* can describe products
+* can describe differential rules, treating the algebra as a page of an SS
+* can describe further information on any give basis elt
+* can describe Massey products
+
+UI
+* tabs
+* modifier stack
+
+Modifiers
+* transformations -- translation, 2x2 / 3x3 matrix
+* compute possible differentials
+
+More backends
+* Adams through comodules.
+* Bar / cobar resolution.
+* polynomial algebra on given generators. 
+
+
+

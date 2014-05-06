@@ -1,5 +1,5 @@
 #!/bin/sh
 
 cd sandbox
-java -Xmx2048M -Xms2048M -Xrunhprof -Xprof -jar resolution.jar
+java -Xmx2048M -Xms2048M -Xprof -jar resolution.jar
 cd ..

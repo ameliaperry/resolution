@@ -1,34 +1,38 @@
+package res.frontend;
+
+import res.Config;
 import java.awt.event.*;
 import javax.swing.*;
 
-class SettingsDialog extends JDialog
+public class SettingsDialog extends JDialog
 {
-    static final String FRONT2D = "front2d";
-    static final String FRONT3D = "front3d";
-    static final String MODSPHERE = "Sphere";
-    static final String MODCOF2 = "cofib(2)";
-    static final String MODCOFETA = "cofib(\u03b7)";
-    static final String MODCOFNU = "cofib(\u03bd)";
-    static final String MODCOFSIGMA = "cofib(\u03c3)";
-    static final String BACKBRUNER = "backbruner";
-    static final String BACKOLD = "backold";
+    public static final String FRONT2D = "front2d";
+    public static final String FRONT3D = "front3d";
+    public static final String MODSPHERE = "Sphere";
+    public static final String MODCOF2 = "cofib(2)";
+    public static final String MODCOFETA = "cofib(\u03b7)";
+    public static final String MODCOFNU = "cofib(\u03bd)";
+    public static final String MODCOFSIGMA = "cofib(\u03c3)";
+    public static final String BACKBRUNER = "backbruner";
+//    public static final String BACKOLD = "backold";
 
     static final Integer[] PRIMES = new Integer[] { 2, 3, 5, 7, 11, 13 };
     static final String[] MODULES = new String[] { MODSPHERE, MODCOF2, MODCOFETA, MODCOFNU, MODCOFSIGMA };
 
-    ButtonGroup front;
-    ButtonGroup back;
+    /* XXX instead of publically exposing UI elements, should offer getters */
+    public ButtonGroup front;
+    public ButtonGroup back;
 
-    JComboBox<Integer> prime;
-    JComboBox<String> modcombo;
-    JCheckBox oddrel;
-    JSpinner maxt;
-    JSpinner threads;
+    public JComboBox<Integer> prime;
+    public JComboBox<String> modcombo;
+    public JCheckBox oddrel;
+    public JSpinner maxt;
+    public JSpinner threads;
 
-    boolean cancelled = true;
+    public boolean cancelled = true;
 
 
-    SettingsDialog()
+    public SettingsDialog()
     {
         super((java.awt.Frame)null, "Launch settings", true);
         getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
@@ -69,14 +73,14 @@ class SettingsDialog extends JDialog
 
         Box b_back = Box.createHorizontalBox();
         JRadioButton back_bruner = new JRadioButton("bruner", true);
-        JRadioButton back_old = new JRadioButton("old");
+//        JRadioButton back_old = new JRadioButton("old");
         back_bruner.setActionCommand(BACKBRUNER);
-        back_old.setActionCommand(BACKOLD);
+//        back_old.setActionCommand(BACKOLD);
         back.add(back_bruner);
-        back.add(back_old);
+//        back.add(back_old);
         b_back.add(new JLabel("Backend:"));
         b_back.add(back_bruner);
-        b_back.add(back_old);
+//        b_back.add(back_old);
         
         Box b_threads = Box.createHorizontalBox();
         threads = new JSpinner(new SpinnerNumberModel(Config.THREADS, 1, 10000, 1));
@@ -110,7 +114,6 @@ class SettingsDialog extends JDialog
         getContentPane().add(b_ok);
 
         pack();
-        setVisible(true);
     }
 
 }

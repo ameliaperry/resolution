@@ -1,8 +1,11 @@
+package res.algebra;
+
+import res.*;
 import java.util.*;
 
-class Sq implements Comparable<Sq>
+public class Sq implements GradedElement<Sq>
 {
-    public static final Sq ID = new Sq(new int[] {});
+    public static final Sq UNIT = new Sq(new int[] {});
     public static final Sq[] HOPF = new Sq[] {
         new Sq(new int[] {1}),
         new Sq(new int[] {Config.Q}),
@@ -10,23 +13,25 @@ class Sq implements Comparable<Sq>
         new Sq(new int[] {Config.P*Config.P*Config.Q})
     };
 
-    int[] q; /* Indices of the power operations.
+
+    public int[] q; /* Indices of the power operations.
                 Mod 2, i indicates Sq^i.
                 Mod p>2, 2k(p-1) indicates P^i, 2k(p-1)+1 indicates B P^i. */
 
 
     public Sq(int[] qq) { q = qq; }
-
     
-    public boolean containsBeta()
+    /* novikov filtration is 1 if there are no betas. this returns 1 for the
+     * identity operation; is this okay? */
+    @Override public int nov()
     {
         for(int i : q)
             if(i % Config.P != 0)
-                return true;
-        return false;
+                return 0;
+        return 1;
     }
 
-    public int deg()
+    @Override public int deg()
     {
         int deg = 0;
         for(int i : q)
@@ -34,7 +39,7 @@ class Sq implements Comparable<Sq>
         return deg;
     }
 
-    public ModSet<Sq> times(Sq o)
+    ModSet<Sq> times(Sq o)
     {
         int[] ret = new int[q.length + o.q.length];
         for(int i = 0; i < q.length; i++)
@@ -98,7 +103,10 @@ class Sq implements Comparable<Sq>
 
         ret = new ModSet<Sq>();
         
-        int Q = 2 * (Config.P - 1); /* convenience */
+        /* convenience */
+        final int P = Config.P;
+        final int Q = 2 * (Config.P - 1);
+        final int R = Config.P - 1;
 
         for(int i = q.length - 2; i >= 0; i--) {
             int x = q[i];
@@ -115,22 +123,19 @@ class Sq implements Comparable<Sq>
 
             for(int c = 0; c <= a/Config.P; c++) {
 
-                int sign = 1 - 2 * ((a+c) % 2);
+                int sign = ((a ^ c) & 1) == 0  ?  1  :  -1;
 
 //                System.out.printf("adem: x=%d y=%d a=%d b=%d sign=%d\n", x, y, a, b, sign);
 
-                if(rx == 0 && ry == 0)
-                    resolve_p_add_term(sign*ResMath.binom_p((Config.P-1)*(b-c)-1,a-c*Config.P), (a+b-c)*Q, c*Q, i, ret);
-                else if(rx == 1 && ry == 0)
-                    resolve_p_add_term(sign*ResMath.binom_p((Config.P-1)*(b-c)-1,a-c*Config.P), (a+b-c)*Q+1, c*Q, i, ret);
-                else if(rx == 0 && ry == 1) {
-                    resolve_p_add_term(sign*ResMath.binom_p((Config.P-1)*(b-c),a-c*Config.P), (a+b-c)*Q+1, c*Q, i, ret);
-                    resolve_p_add_term(-sign*ResMath.binom_p((Config.P-1)*(b-c)-1,a-c*Config.P-1), (a+b-c)*Q, c*Q+1, i, ret);
+                if(ry == 0)
+                    resolve_p_add_term( sign*ResMath.binom_p(R*(b-c)-1,a-c*P  ), (a+b-c)*Q+rx, c*Q  , i, ret);
+                else {
+                    if(rx == 0) {
+                        resolve_p_add_term( sign*ResMath.binom_p(R*(b-c)  ,a-c*P  ), (a+b-c)*Q+1, c*Q  , i, ret);
+                        resolve_p_add_term(-sign*ResMath.binom_p(R*(b-c)-1,a-c*P-1), (a+b-c)*Q  , c*Q+1, i, ret);
+                    } else
+                        resolve_p_add_term(-sign*ResMath.binom_p(R*(b-c)-1,a-c*P-1), (a+b-c)*Q+1, c*Q+1, i, ret);
                 }
-                else if(rx == 1 && ry == 1)
-                    resolve_p_add_term(-sign*ResMath.binom_p((Config.P-1)*(b-c)-1,a-c*Config.P-1), (a+b-c)*Q+1, c*Q+1, i, ret);
-                else Main.die_if(true, "Bad Adem case.");
-                       
             }
 
             return ret;
@@ -190,7 +195,7 @@ class Sq implements Comparable<Sq>
     {
         int hash = 0;
         for(int i : q)
-            hash = hash * 27863521 + i;
+            hash = hash * 27863521 ^ i;
         return hash;
     }
 
@@ -215,97 +220,5 @@ class Sq implements Comparable<Sq>
         return 0;
     }
 
-
-    /* The Steenrod algebra. */
-    public static Iterable<Sq> steenrod(int n)
-    {
-        Iterable<int[]> p;
-        if(Config.P == 2) p = part_2(n,n);
-        else            p = part_p(n,n);
-        Collection<Sq> ret = new ArrayList<Sq>();
-
-        for(int[] q : p)
-            ret.add(new Sq(q));
-
-        return ret;
-    }
-
-/*    public static void init()
-    {
-        int idx = 1;
-        for(int n = 0; n < T_CAP; n++)
-            for(Sq q : steenrod(n))
-                idxcache.put(q, idx);
-    } */
-
-    private static Map<String,Iterable<int[]>> part_cache = new HashMap<String,Iterable<int[]>>();
-    private static String part_cache_keystr(int n, int max) {
-        return "("+n+"/"+max+"/"+Config.P+")";
-    }
-
-    private static Iterable<int[]> part_2(int n, int max)
-    {
-        if(n == 0) { /* the trivial solution */
-            Collection<int[]> ret = new ArrayList<int[]>();
-            ret.add(new int[] {});
-            return ret;
-        }
-        if(max == 0) return new ArrayList<int[]>(); /* no solutions */
-        Iterable<int[]> ret0 = part_cache.get(part_cache_keystr(n,max));
-        if(ret0 != null) return ret0;
-
-        Collection<int[]> ret = new ArrayList<int[]>();
-
-        for(int i = (n+1)/2; i <= max; i++) {
-            for(int[] q0 : part_2(n-i, i/2)) {
-                int[] q1 = new int[q0.length + 1];
-                q1[0] = i;
-                for(int j = 0; j < q0.length; j++)
-                    q1[j+1] = q0[j];
-                ret.add(q1);
-            }
-        }
-
-        part_cache.put(part_cache_keystr(n,max), ret);
-
-        return ret;
-    }
-
-    private static Iterable<int[]> part_p(int n, int max)
-    {
-        if(n == 0) { /* the trivial solution */
-            Collection<int[]> ret = new ArrayList<int[]>();
-            ret.add(new int[] {});
-            return ret;
-        }
-        if(max == 0) return new ArrayList<int[]>(); /* no solutions */
-        Iterable<int[]> ret0 = part_cache.get(part_cache_keystr(n,max));
-        if(ret0 != null) return ret0;
-
-        Collection<int[]> ret = new ArrayList<int[]>();
-
-        for(int i = 0; i <= max; i += 2 * (Config.P - 1)) { /* XXX i could start higher? */
-            /* try P^i */
-            for(int[] q0 : part_p(n-i, i/Config.P)) {
-                int[] q1 = new int[q0.length + 1];
-                q1[0] = i;
-                for(int j = 0; j < q0.length; j++)
-                    q1[j+1] = q0[j];
-                ret.add(q1);
-            }
-            /* try BP^i */
-            if(i+1 > max) break;
-            for(int[] q0 : part_p(n-(i+1), (i+1)/Config.P)) {
-                int[] q1 = new int[q0.length + 1];
-                q1[0] = i+1;
-                for(int j = 0; j < q0.length; j++)
-                    q1[j+1] = q0[j];
-                ret.add(q1);
-            }
-        }
-
-        part_cache.put(part_cache_keystr(n,max), ret);
-
-        return ret;
-    }
 }
+

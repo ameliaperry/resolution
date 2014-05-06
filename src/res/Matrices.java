@@ -1,12 +1,14 @@
-import java.util.*;
+package res;
 
-class Matrices
+import java.util.Arrays;
+
+public class Matrices
 {
     /* row-reduces a matrix (in place).
      * Returns an array giving the column position of the leading 1 in each row. 
      * It should be noted that matrices are assumed to be reduced to lowest
      * non-negative residues (mod p), and this operation respects that. */
-    static int[] rref(int[][] mat, int preserve_right)
+    public static int[] rref(int[][] mat, int preserve_right)
     {
         if(mat.length == 0)
             return new int[] {};
@@ -57,7 +59,7 @@ class Matrices
     }
 
 
-    static void printMatrix(String name, int[][] mat)
+    public static void printMatrix(String name, int[][] mat)
     {
         if(!Config.MATRIX_DEBUG) return;
 
@@ -75,7 +77,7 @@ class Matrices
         System.out.println();
     }
 
-    static double[] transform3(double[][] m, double[] v)
+    public static double[] transform3(double[][] m, double[] v)
     {
         return new double[] {
             m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
@@ -84,7 +86,7 @@ class Matrices
         };
     }
 
-    static double[][] mmult3(double[][] m, double[][] n)
+    public static double[][] mmult3(double[][] m, double[][] n)
     {
         double[][] r = new double[3][3];
         for(int i = 0; i < 3; i++)
@@ -94,63 +96,11 @@ class Matrices
         return r;
     }
 
-    static double[][] transpose3(double[][] m) {
+    public static double[][] transpose3(double[][] m) {
         double[][] r = new double[3][3];
         for(int i = 0; i < 3; i++)
             for(int j = 0; j < 3; j++)
                 r[i][j] = m[j][i];
         return r;
     }
-}
-
-
-/*
- * little arithmetic functions like modular arithmetic
- */
-class ResMath
-{
-    static int[] inverse;
-
-    static boolean binom_2(int a, int b)
-    {
-        return ((~a) & b) == 0;
-    }
-
-    static Map<String,Integer> binom_cache = new HashMap<String,Integer>();
-    static String binom_cache_str(int a, int b) { return a+"/"+b; }
-    static int binom_p(int a, int b)
-    {
-        String s = binom_cache_str(a,b);
-        Integer i = binom_cache.get(s);
-        if(i != null) return i;
-
-        int ret;
-        if(a < 0 || b < 0 || b > a)
-            ret = 0;
-        else if(a == 0)
-            ret = 1;
-        else ret = dmod(binom_p(a-1,b) + binom_p(a-1,b-1));
-
-        binom_cache.put(s,ret);
-        return ret;
-    }
-
-    static int dmod(int n)
-    {
-        return (n + (Config.P << 8)) % Config.P;
-    }
-
-    static void calcInverses()
-    {
-        inverse = new int[Config.P];
-        for(int i = 1; i < Config.P; i++) {
-            for(int j = 1; j < Config.P; j++) {
-                if((i * j) % Config.P == 1) {
-                    inverse[i] = j;
-                    break;
-                }
-            }
-        }
-    }
-
 }

@@ -1,7 +1,8 @@
 #!/bin/sh
 
-find | grep 'java$' | xargs javac -Xlint -Xlint:-serial -source 6 -target 6 -bootclasspath ../../rt.jar -extdirs "" -d bin/
-jar cmf mainClass resolution.jar src/*.java -C bin/ .
+JAVAFILES=`find src | grep 'java$'`
+javac -Xlint -Xlint:-serial -source 6 -target 6 -bootclasspath ../../rt.jar -extdirs "" -d bin/ $JAVAFILES
+jar cmf mainClass resolution.jar $JAVAFILES -C bin/ .
 cp -t sandbox resolution.jar
 
 
