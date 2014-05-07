@@ -81,12 +81,12 @@ public class ResDisplay extends JPanel implements PingListener, MouseMotionListe
     {
         super.paintComponent(g);
 
-        int min_x_visible = getx(-BLOCK_WIDTH);
-        int min_y_visible = gety(getHeight()+BLOCK_WIDTH);
+        int min_x_visible = getx(-3*BLOCK_WIDTH);
+        int min_y_visible = gety(getHeight() + 3*BLOCK_WIDTH);
         if(min_x_visible < 0) min_x_visible = 0;
         if(min_y_visible < 0) min_y_visible = 0;
-        int max_x_visible = getx(getWidth()+BLOCK_WIDTH);
-        int max_y_visible = gety(-BLOCK_WIDTH);
+        int max_x_visible = getx(getWidth() + 3*BLOCK_WIDTH);
+        int max_y_visible = gety(-3*BLOCK_WIDTH);
         int max_visible = (max_x_visible < max_y_visible) ? max_y_visible : max_x_visible;
 
         /* draw selection */
@@ -224,6 +224,21 @@ public class ResDisplay extends JPanel implements PingListener, MouseMotionListe
         g.setColor(Color.black);
         for(int[] p : pos.values()) {
             g.fillOval(p[0]-2, p[1]-2, 5, 5);
+        }
+
+        /* draw axes */
+        final int MARGIN_WID = 30;
+        int bmy = getHeight() - MARGIN_WID;
+        g.setColor(getBackground());
+        g.fillRect(0, 0, MARGIN_WID, getHeight());
+        g.fillRect(0, bmy, getWidth(), MARGIN_WID);
+        g.setColor(Color.gray);
+        g.drawLine(MARGIN_WID, 0, MARGIN_WID, bmy);
+        g.drawLine(MARGIN_WID, bmy, getWidth(), bmy);
+        g.setColor(Color.black);
+        for(int x = 0; x <= max_visible; x += 5) {
+            g.drawString(String.valueOf(x), getcx(x)-8, getHeight()-10);
+            g.drawString(String.valueOf(x), 10, getcy(x)+5);
         }
 
     }
