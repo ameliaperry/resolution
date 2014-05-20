@@ -27,6 +27,13 @@ public class SteenrodAlgebra implements GradedAlgebra<Sq>
         return Sq.UNIT;
     }
 
+    @Override public int extraDegrees()
+    {
+        if(Config.MICHAEL_MODE && Config.P == 2)
+            return 1;
+        return 0;
+    }
+
     private static Map<Integer,Iterable<int[]>> part_cache = new TreeMap<Integer,Iterable<int[]>>();
     private static Integer part_cache_key(int n, int max) {
         return (Config.P << 28) ^ (n << 14) ^ max;
@@ -37,7 +44,7 @@ public class SteenrodAlgebra implements GradedAlgebra<Sq>
     /*
      * Returns all partitions of <n> into P-admissible sequences of largest entry at most <max>.
      */
-    private static Iterable<int[]> part_p(int n, int max)
+    static Iterable<int[]> part_p(int n, int max)
     {
         /* base cases */
         if(n == 0) return Collections.singleton(new int[] {}); /* the trivial partition */

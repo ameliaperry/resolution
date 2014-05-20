@@ -1,6 +1,4 @@
-package res;
-
-import res.algebra.*;
+package res.algebra;
 
 import java.util.Map;
 

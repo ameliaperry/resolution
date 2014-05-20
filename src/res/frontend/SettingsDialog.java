@@ -13,11 +13,12 @@ public class SettingsDialog extends JDialog
     public static final String MODCOFETA = "cofib(\u03b7)";
     public static final String MODCOFNU = "cofib(\u03bd)";
     public static final String MODCOFSIGMA = "cofib(\u03c3)";
+    public static final String MODEXCESS = "excess\u2264t";
     public static final String BACKBRUNER = "backbruner";
 //    public static final String BACKOLD = "backold";
 
     static final Integer[] PRIMES = new Integer[] { 2, 3, 5, 7, 11, 13 };
-    static final String[] MODULES = new String[] { MODSPHERE, MODCOF2, MODCOFETA, MODCOFNU, MODCOFSIGMA };
+    static final String[] MODULES = new String[] { MODSPHERE, MODCOF2, MODCOFETA, MODCOFNU, MODCOFSIGMA, MODEXCESS };
 
     /* XXX instead of publically exposing UI elements, should offer getters */
     public ButtonGroup front;

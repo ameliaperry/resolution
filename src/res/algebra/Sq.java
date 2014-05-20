@@ -21,14 +21,18 @@ public class Sq implements GradedElement<Sq>
 
     public Sq(int[] qq) { q = qq; }
     
+    private static final int[] EMPTY = new int[] {};
+    private static final int[] ZERO = new int[] {0};
+    private static final int[] ONE = new int[] {1};
     /* novikov filtration is 1 if there are no betas. this returns 1 for the
      * identity operation; is this okay? */
-    @Override public int nov()
+    @Override public int[] extraGrading()
     {
+        if(!Config.MICHAEL_MODE) return EMPTY;
         for(int i : q)
             if(i % Config.P != 0)
-                return 0;
-        return 1;
+                return ZERO;
+        return ONE;
     }
 
     @Override public int deg()
@@ -37,6 +41,15 @@ public class Sq implements GradedElement<Sq>
         for(int i : q)
             deg += i;
         return deg;
+    }
+
+    public int excess()
+    {
+        if(q.length == 0) return 0;
+        int exc = q[0];
+        for(int i = 1; i < q.length; i++)
+            exc -= q[i];
+        return exc;
     }
 
     ModSet<Sq> times(Sq o)

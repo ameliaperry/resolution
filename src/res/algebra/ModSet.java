@@ -1,11 +1,15 @@
-package res;
+package res.algebra;
 
+import res.*;
 import java.util.*;
 
 /* A formal F_p-linear combination of things of type T. */
 public class ModSet<T> extends TreeMap<T,Integer>
 {
     public ModSet() {}
+    public ModSet(Comparator<? super T> comp) {
+        super(comp);
+    }
 
     public void add(T d, int mult)
     {

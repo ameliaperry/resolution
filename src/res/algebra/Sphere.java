@@ -10,17 +10,15 @@ public class Sphere<T extends GradedElement<T>> extends GradedModule<T>
 
     public Sphere(GradedAlgebra<T> alg)
     {
-        Generator<T> g = new Generator<T>(-1,0,0);
+        /* XXX should follow the number of extra gradings on alg */
+        Generator<T> g = new Generator<T>(new int[] {-1,0,0}, 0);
         unit = alg.unit();
         d = new Dot<T>(g, alg.unit());
-        d.nov = 0;
     }
 
     @Override public Iterable<Dot<T>> basis(int deg) {
-        List<Dot<T>> ret = new ArrayList<Dot<T>>();
-        if(deg == 0)
-            ret.add(d);
-        return ret;
+        if(deg != 0) return Collections.emptyList();
+        else return Collections.singleton(d);
     }
 
     @Override public DModSet<T> act(Dot<T> o, T sq)

@@ -1,0 +1,139 @@
+
+ALL PRODUCTS / TOWERS RELATED CODE FROM RESDISPLAY
+
+
+    final static int TOWER_CUTOFF = 5;
+
+    boolean diff = false;
+    boolean cartdiff = true;
+
+    boolean[] hlines = new boolean[] { true, true, false };
+    boolean[] hhide = new boolean[] { false, false, false };
+    boolean[] htowers = new boolean[] { false, false, false };
+
+        
+    List<Set<Generator<Sq>>> towers = null;
+    List<Set<Generator<Sq>>> towergen = null;
+
+
+    /* from isVisible */
+        if(d.nov != -1 && (d.nov < min_filt || d.nov > max_filt))
+            return false;
+        for(int i = 0; i <= 2; i++) if(hhide[i])
+            for(Dot<Sq> o : d.img.keySet())
+                if(o.sq.equals(Sq.HOPF[i]))
+                    return false; // XXX risky -- we can have joint h_i multiples 
+        for(int i = 0; i <= 2; i++) if(htowers[i] && towers != null)
+            if(towers.get(i).contains(d))
+                return false;
+        return true;
+
+    /* from paintComponent */
+                /* draw multiplications */
+                for(int i = 0; i <= 2; i++) if(hlines[i]) {
+                    g.setColor(Color.black);
+                    for(U d : visibles) {
+                        int[] src = pos.get(d);
+                        for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i]) && frameVisibles.contains(o.base)) {
+                            int[] dest = pos.get(o.base);
+                            g.drawLine(src[0], src[1], dest[0], dest[1]);
+                        }
+                    }
+                }
+                
+                /* draw towers */
+                for(int i = 0; i <= 2; i++) if(htowers[i] && towergen != null) {
+                    g.setColor(Color.blue);
+                    for(U d : towergen.get(i)) if(frameVisibles.contains(d)) {
+                        int[] src = pos.get(d);
+                        int[] dest = new int[] { src[0] + ((1 << i) - 1) * BLOCK_WIDTH * 3 / 4, src[1] - BLOCK_WIDTH * 3 / 4 };
+                        g.drawLine(src[0], src[1], dest[0], dest[1]);
+                    }
+                }
+
+                /* draw potential alg Novikov differentials */
+                if(diff && x >= 1) {
+                    g.setColor(Color.green);
+                    for(int j = 2; ; j++) {
+                        if(! backend.isComputed(y+j, x-1 + y+j))
+                            break;
+                        Collection<U> ogen = backend.gens(y+j, x-1 + y+j);
+                        for(U d : visibles) {
+                            int[] src = pos.get(d);
+                            for(U o : ogen)
+                                if(o.nov == d.nov + 1 && frameVisibles.contains(o)) {
+                                    int[] dest = pos.get(o);
+                                    g.drawLine(src[0], src[1], dest[0], dest[1]);
+                                }
+                        }
+                    }
+                }
+
+                /* draw potential Cartan differentials */
+                if(cartdiff && x >= 1 && backend.isComputed(y+1, y+1 + x-1)) {
+                    g.setColor(Color.red);
+                    Collection<U> ogen = backend.gens(y+1, y+1 + x-1);
+
+                    for(U o : ogen) if(frameVisibles.contains(o)) {
+                        int[] dest = pos.get(o);
+                        for(U d : visibles)
+                            if(o.nov >= d.nov + 2) {
+                                int[] src = pos.get(d);
+                                if(src == null) System.err.printf("src is null, dot %s, s=%d\n", d, d.s);
+                                if(dest == null) System.err.printf("dest is null, dot %s, s=%d\n", o, o.s);
+                                g.drawLine(src[0], src[1], dest[0], dest[1]);
+                            }
+                    }
+                }
+    
+
+    private void computeTowers(int tmax)
+    {
+        List<Set<U>> newtowers = new ArrayList<Set<U>>();
+        List<Set<U>> newtowergen = new ArrayList<Set<U>>();
+
+        ArrayList<U> templist = new ArrayList<U>();
+
+        for(int i = 0; i <= 2; i++) {
+            newtowers.add(new TreeSet<U>());
+            newtowergen.add(new TreeSet<U>());
+
+            for(int t = tmax-(1<<i)+1; t <= tmax; t++) for(int s = 0; s <= t; s++) {
+                if(! backend.isComputed(s,t)) break;
+
+                /* for each generator in high degree */
+                for(U d : backend.gens(s,t)) {
+                    templist.clear();
+
+                    boolean fork = false;
+                    /* follow it backwards and see if we get a long enough tower */
+                    while(d != null) {
+                        templist.add(d);
+                        U d_new = null;
+                        if(d.img != null) {
+                            for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
+                                if(d_new != null) fork = true;
+                                d_new = o.base;
+                            }
+                        }
+                        d = d_new;
+                    }
+
+//                    System.out.printf("h%d tower of length %d\n", i, templist.size());
+                    if(templist.size() < TOWER_CUTOFF)
+                        continue;
+
+                    if(fork)
+                        System.err.println("Warning: tower fork");
+
+                    /* pop the last element back off as a generator */
+                    newtowergen.get(i).add(templist.remove(templist.size() - 1));
+                    /* the rest are tower elements */
+                    newtowers.get(i).addAll(templist);
+                }
+            }
+        }
+
+        towers = newtowers;
+        towergen = newtowergen;
+    }

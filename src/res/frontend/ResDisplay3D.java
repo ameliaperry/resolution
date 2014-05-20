@@ -1,7 +1,8 @@
 package res.frontend;
 
 import res.*;
-import res.algebra.Sq;
+import res.algebra.*;
+import res.transform.*;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -10,24 +11,17 @@ import javax.swing.*;
 import javax.swing.event.*;
 import java.util.List; /* for preference over java.awt.List */
 
-public class ResDisplay3D extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener
+public class ResDisplay3D<U extends MultigradedElement<U>> extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener
 {
-    final static int TOWER_CUTOFF = 5;
-
-    private Backend<Sq> backend;
+    private Decorated<U, ? extends MultigradedVectorSpace<U>> dec;
+    private MultigradedVectorSpace<U> under;
 
     static final double SCALENOTCH = 0.9;
     static final double SCALEPIX = 0.994;
     static final double ANGLE = 0.015;
 
     int[] bounds = { 0, 100, 0, 100, 0, 100 };
-    boolean diff = false;
-    boolean cartdiff = true;
     double magnify_n = 1.0;
-    
-    boolean[] hlines = new boolean[] { true, true, false };
-    boolean[] hhide = new boolean[] { false, false, false };
-    boolean[] htowers = new boolean[] { false, false, false };
 
     int mx = -1;
     int my = -1;
@@ -37,21 +31,27 @@ public class ResDisplay3D extends JPanel implements PingListener, MouseMotionLis
     double[][] mtx = {{1,0,0},{0,1,0},{0,0,1}};
     double[] center = new double[] {30,30,0};
     boolean perspective = true;
-    
-    List<Set<Generator<Sq>>> towers = null;
-    List<Set<Generator<Sq>>> towergen = null;
 
 
-    private ResDisplay3D(Backend<Sq> back)
+    private ResDisplay3D(Decorated<U, ? extends MultigradedVectorSpace<U>> dec)
     {
-        backend = back;
+        this.dec = dec;
+        under = dec.underlying();
+        under.addListener(this);
+
         addMouseMotionListener(this);
         addMouseWheelListener(this);
     }
 
-    private String trideg_key(int x, int y, int n)
+    int[] multideg(int x, int y)
     {
-        return x + "/" + y + "/" + n;
+        return new int[] {y, x+y};
+/*        int[] ret = new int[under.num_gradings()];
+        ret[0] = y;
+        ret[1] = x+y;
+        for(int i = 2; i < ret.length; i++)
+            ret[i] = Multidegrees.WILDCARD;
+        return ret; */
     }
 
     @Override public void paintComponent(Graphics g)
@@ -80,106 +80,69 @@ public class ResDisplay3D extends JPanel implements PingListener, MouseMotionLis
         g.drawLine(vts[1][0][0][0], vts[1][0][0][1], vts[1][0][1][0], vts[1][0][1][1]);
         g.drawLine(vts[1][1][0][0], vts[1][1][0][1], vts[1][1][1][0], vts[1][1][1][1]);
 
-        /* make sure vertices are up to date */
-        Set<Generator<Sq>> dots = new TreeSet<Generator<Sq>>();
-        ArrayList<Vertex> vertices = new ArrayList<Vertex>();
-        Map<String, Vertex> tridegs = new HashMap<String, Vertex>();
-        Map<Generator<Sq>, Vertex> vertexmap = new TreeMap<Generator<Sq>, Vertex>();
+
+        /* get the vertices and place them */
+        Map<U, Vertex> vertexmap = new TreeMap<U, Vertex>();
+        TreeMap<int[], Integer> offsets = new TreeMap<int[], Integer>(Multidegrees.multidegComparator);
         for(int x = bounds[0]; x <= bounds[1]; x++) {
             for(int y = bounds[2]; y <= bounds[3]; y++) {
 
-                Collection<Generator<Sq>> gens = backend.gens(y, x+y);
+                Collection<U> gens = under.gens(multideg(x,y));
                 if(gens == null) break;
                 
-                for(Generator<Sq> d : gens) {
-                    if(d.nov < bounds[4] || d.nov > bounds[5])
+                for(U d : gens) {
+                    int nov = (d.deg().length >= 3 ? d.deg()[2] : 0);
+                    if(nov < bounds[4] || nov > bounds[5])
                         continue;
 
-                    /* hide tower elements */
-                    boolean htower_found = false;
-                    for(int h = 0; h <= 2; h++)
-                        if(htowers[h] && towers != null && towers.get(h).contains(d))
-                            htower_found = true;
-                    if(htower_found)
-                        continue;
-                    
-                    /* XXX TODO hide hopf image */
+                    int[] trideg = new int[] {x,y,nov};
 
-                    int offset = 0;
-                    for(Generator<Sq> o : gens)
-                        if(o.nov == d.nov && o.idx > d.idx)
-                            offset++;
+                    Integer offset = offsets.get(trideg);
+                    if(offset == null) offset = 0;
 
-                    Vertex v = new Vertex(x, y, d.idx, d.nov);
+                    Vertex v = new Vertex(x, y, nov);
                     v.offset(offset);
                     v.tp = full_transform(v.p);
 
-                    dots.add(d);
-                    vertices.add(v);
-                    tridegs.put(trideg_key(x,y,d.nov), v);
+                    offset++;
+                    offsets.put(trideg, offset);
+
                     vertexmap.put(d, v);
                 }
             } 
         }
 
+        for(U u : vertexmap.keySet()) {
+            int[] tp1 = vertexmap.get(u).tp;
 
-        /* draw potential alg Novikov differentials */
-        if(diff) {
-            g.setColor(Color.green);
-            for(Vertex v : vertices) {
-                for(int y = v.y + 2; y < v.x; y++) {
-                    Vertex o = tridegs.get(trideg_key(v.x - 1, y, v.n + 1));
-                    if(o != null)
-                        g.drawLine(v.tp[0], v.tp[1], o.tp[0], o.tp[1]);
-                }
-            } 
-        }
+            /* based line decorations */
+            for(BasedLineDecoration<U> d : dec.getBasedLineDecorations(u)) {
+                Vertex vo = vertexmap.get(d.dest);
+                if(vo == null) continue;
+                int[] tp2 = vo.tp;
 
-        /* draw potential Cartan differentials */
-        if(cartdiff) {
-            g.setColor(Color.red);
-            for(Vertex v : vertices) {
-                for(int n = v.n + 2; n <= v.y + 1; n++) {
-                    Vertex o = tridegs.get(trideg_key(v.x - 1, v.y + 1, n));
-                    if(o != null)
-                        g.drawLine(v.tp[0], v.tp[1], o.tp[0], o.tp[1]);
-                }
+                g.setColor(d.color);
+                g.drawLine(tp1[0], tp1[1], tp2[0], tp2[1]);
             }
-        }
 
-        /* draw multiplications */
-        g.setColor(Color.black);
-        for(int i = 0; i <= 2; i++) if(hlines[i]) {
-            for(Generator<Sq> d : vertexmap.keySet()) {
-                for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
-                    Vertex v1 = vertexmap.get(d);
-                    Vertex v2 = vertexmap.get(o.base);
-                    if(v2 == null) continue;
-                    g.drawLine(v1.tp[0], v1.tp[1], v2.tp[0], v2.tp[1]);
-                }
+            /* unbased line decorations */
+            for(UnbasedLineDecoration<U> d : dec.getUnbasedLineDecorations(u)) {
+                double[] p = new double[3];
+                for(int i = 0; i < 3 && i < d.dest.length; i++)
+                    p[i] = d.dest[i];
+                /* XXX for the moment, the grading will be wrong here -- haven't done the (x,y) --> (x+y,x) transformation or whatever */
+                int[] tp2 = full_transform(p);
+
+                g.setColor(d.color);
+                g.drawLine(tp1[0], tp1[1], tp2[0], tp2[1]);
             }
+
         }
 
-        /* draw towers */
-        for(int i = 0; i <= 2; i++) if(htowers[i] && towergen != null) {
-            g.setColor(Color.blue);
-            for(Generator<Sq> d : towergen.get(i)) {
-                Vertex v = vertexmap.get(d);
-                if(v == null) continue;
-
-                double[] destp = new double[] {
-                    v.p[0] + ((1<<i) - 1) * 3.0 / 4.0,
-                    v.p[1] + 0.75,
-                    v.p[2] + (i == 0 ? 0.0 : 0.75),
-                };
-                int[] desttp = full_transform(destp);
-                g.drawLine(v.tp[0], v.tp[1], desttp[0], desttp[1]);
-            }
-        }
         
         /* draw vertices */
         g.setColor(Color.black);
-        for(Vertex v : vertices)
+        for(Vertex v : vertexmap.values())
             g.drawRect(v.tp[0] - 1, v.tp[1] - 1, 3, 3);
     }
 
@@ -273,73 +236,20 @@ public class ResDisplay3D extends JPanel implements PingListener, MouseMotionLis
         };
     }
     
-    private void computeTowers(int tmax)
+
+    @Override public void ping(int[] i)
     {
-        List<Set<Generator<Sq>>> newtowers = new ArrayList<Set<Generator<Sq>>>();
-        List<Set<Generator<Sq>>> newtowergen = new ArrayList<Set<Generator<Sq>>>();
-
-        ArrayList<Generator<Sq>> templist = new ArrayList<Generator<Sq>>();
-
-        for(int i = 0; i <= 2; i++) {
-            newtowers.add(new TreeSet<Generator<Sq>>());
-            newtowergen.add(new TreeSet<Generator<Sq>>());
-
-            for(int t = tmax-(1<<i)+1; t <= tmax; t++) for(int s = 0; s <= t; s++) {
-                if(! backend.isComputed(s,t)) break;
-
-                /* for each generator in high degree */
-                for(Generator<Sq> d : backend.gens(s,t)) {
-                    templist.clear();
-
-                    boolean fork = false;
-                    /* follow it backwards and see if we get a long enough tower */
-                    while(d != null) {
-                        templist.add(d);
-                        Generator<Sq> d_new = null;
-                        if(d.img != null) {
-                            for(Dot<Sq> o : d.img.keySet()) if(o.sq.equals(Sq.HOPF[i])) {
-                                if(d_new != null) fork = true;
-                                d_new = o.base;
-                            }
-                        }
-                        d = d_new;
-                    }
-
-//                    System.out.printf("h%d tower of length %d\n", i, templist.size());
-                    if(templist.size() < TOWER_CUTOFF)
-                        continue;
-                    
-                    if(fork)
-                        System.err.println("Warning: tower fork");
-
-                    /* pop the last element back off as a generator */
-                    newtowergen.get(i).add(templist.remove(templist.size() - 1));
-                    /* the rest are tower elements */
-                    newtowers.get(i).addAll(templist);
-                }
-            }
-        }
-
-        towers = newtowers;
-        towergen = newtowergen;
-    }
-
-    @Override public void ping(int s, int t)
-    {
-        if(s == t && t >= 30)
-            computeTowers(t);
         repaint();
     }
 
-    public static void constructFrontend(Backend<Sq> back) 
+    public static <U extends MultigradedElement<U>> void constructFrontend(Decorated<U, ? extends MultigradedVectorSpace<U>> dec) 
     {
         JFrame fr = new JFrame("Resolution 3D");
         fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         fr.setSize(1200,800);
         
-        ResDisplay3D d = new ResDisplay3D(back);
+        ResDisplay3D<U> d = new ResDisplay3D<U>(dec);
         fr.getContentPane().add(d);
-        back.register_listener(d);
 
         ControlPanel3D p = new ControlPanel3D(d);
         fr.getContentPane().add(p, BorderLayout.EAST);
@@ -352,15 +262,13 @@ public class ResDisplay3D extends JPanel implements PingListener, MouseMotionLis
 class Vertex {
     double[] p;
     int[] tp;
-    int i;
     int x;
     int y; 
     int n;
 
-    Vertex(int x, int y, int i, int n) {
+    Vertex(int x, int y, int n) {
         this.x = x;
         this.y = y;
-        this.i = i;
         this.n = n;
         p = new double[] {x,y,n};
     }
@@ -375,7 +283,7 @@ class Vertex {
 
 class ControlPanel3D extends Box {
 
-    private JSpinner produceJSpinner(final int i, final ResDisplay3D parent)
+    private JSpinner produceJSpinner(final int i, final ResDisplay3D<?> parent)
     {
         final JSpinner ret = new JSpinner(new SpinnerNumberModel(parent.bounds[i],0,1000,1));
 
@@ -392,10 +300,11 @@ class ControlPanel3D extends Box {
         return ret;
     }
 
-    ControlPanel3D(final ResDisplay3D parent)
+    ControlPanel3D(final ResDisplay3D<?> parent)
     {
         super(BoxLayout.Y_AXIS);
 
+        /*
         add(new JLabel("Bounding box:"));
         Box bx = Box.createHorizontalBox();
         bx.add(new JLabel("x:"));
@@ -489,6 +398,7 @@ class ControlPanel3D extends Box {
             }
         });
         add(mag);
+        */
 
     }
 

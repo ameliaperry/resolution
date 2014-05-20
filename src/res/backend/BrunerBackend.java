@@ -6,15 +6,15 @@ import java.util.*;
 import java.util.concurrent.*;
 
 
-/* Computes Ext_A^{s,t} (M, Z/2) through a minimal resolution of M. */
-/* This seems to work effectively through about t=75, and then becomes prohibitively slow. */
+/* Computes Ext_A^{s,t} (M, Z/2) through a minimal resolution of M, following a paper of Bruner. */
 
-public class BrunerBackend<T extends GradedElement<T>> implements Backend<T>
+public class BrunerBackend<T extends GradedElement<T>> extends MultigradedAlgebra<Generator<T>>
 {
-    private PingListener listener = null;
-
     private final GradedAlgebra<T> alg;
     private GradedModule<T> module;
+
+    private Map<int[],Set<Generator<T>>> gensByMultidegree = new TreeMap<int[],Set<Generator<T>>>(Multidegrees.multidegComparator);
+    private Map<int[],BrunerCellData<T>> output = new TreeMap<int[],BrunerCellData<T>>(Multidegrees.multidegComparator);
 
 
     public BrunerBackend(GradedAlgebra<T> alg) {
@@ -22,31 +22,112 @@ public class BrunerBackend<T extends GradedElement<T>> implements Backend<T>
         module = new Sphere<T>(alg);
     }
 
-    private HashMap<Integer,BrunerCellData<T>> output = new HashMap<Integer,BrunerCellData<T>>();
-    private static Integer output_key(int s, int t) { return (s<<16) ^ t; }
 
-    /* methods for cell data lookup */
-    @Override public Collection<Generator<T>> gens(int s, int t) {
-        BrunerCellData<T> dat;
-        synchronized(output) {
-            dat = output.get(output_key(s,t));
+    /* methods implementing MultigradedAlgebra */
+
+    @Override public int num_gradings() {
+        return 2 + alg.extraDegrees();
+    }
+
+    @Override public Collection<Generator<T>> gens(int[] i)
+    {
+        if(i.length >= 2 && (i[0] < 0 || i[1] < 0))
+            return Collections.emptyList();
+
+        if(i.length == 2) {
+            BrunerCellData<T> dat = dat(i[0],i[1]);
+            if(dat != null && dat.gens != null)
+                return dat.gens;
+            return null;
+        } else if(i.length == num_gradings()) {
+            Collection<Generator<T>> gens = gensByMultidegree.get(i);
+            if(gens == null) return Collections.emptyList();
+            return gens;
+        } else return null;
+    }
+
+    @Override public boolean isComputed(int[] i)
+    {
+        if(i.length < 2) return false;
+        if(i[0] < 0 || i[1] < 0) return true;
+        BrunerCellData<T> dat = dat(i[0], i[1]);
+        return (dat != null && dat.gens != null);
+    }
+
+    @Override public boolean isVanishing(int[] i)
+    {
+        if(i.length < 2) return true;
+        for(int j = 0; j < i.length; j++) {
+            if(i[j] < 0) return true;
         }
+        if(i[1] < i[0]) return true;
+        if(i.length >= 3 && i[2] > i[0]) /* XXX hack this is just for the Steenrod. should query the GradedAlgebra */
+            return true;
+        return false;
+    }
+
+    @Override public ModSet<Generator<T>> times(Generator<T> a, Generator<T> b)
+    {
+        /* XXX TODO full product structure */
+
+        /* so far we can only do products by very simple s=1 generators. in fact this might only work for the Steenrod algebra */
+        if(a.deg[0] != 1)
+            return null;
+        if(a.img.size() != 1)
+            return null;
+        Dot<T> op = a.img.keySet().iterator().next();
+        int coeff = a.img.get(op);
+
+        Collection<Generator<T>> dgens = gens(new int[] {b.deg[0] + 1, b.deg[1] + a.deg[1]});
+        if(dgens == null)
+            return null;
+
+        ModSet<Generator<T>> ret = new ModSet<Generator<T>>();
+        for(Generator<T> g : dgens) {
+            Integer i = g.img.get(op);
+            if(i == null) continue;
+            ret.add(g, i * coeff);
+        }
+        
+        return ret;
+    }
+
+
+    /* internal lookup / put */
+
+    private BrunerCellData<T> dat(int s, int t)
+    {
+        synchronized(output) {
+            return output.get(new int[] {s,t});
+        }
+    }
+    private Collection<Generator<T>> gens(int s, int t)
+    {
+        BrunerCellData<T> dat = dat(s,t);
         if(dat == null) return null;
         return dat.gens;
     }
-    @Override public boolean isComputed(int s, int t) {
-        if(s < 0)
-            return true;
-        return gens(s,t) != null;
+    private boolean isComputed(int s, int t)
+    {
+        return isComputed(new int[] {s,t});
     }
-    private BrunerCellData<T> dat(int s, int t) {
+    private void putOutput(int s, int t, BrunerCellData<T> dat)
+    {
         synchronized(output) {
-            return output.get(output_key(s,t));
+            output.put(new int[] {s,t}, dat);
         }
     }
-    private void putOutput(int s, int t, BrunerCellData<T> dat) {
-        synchronized(output) {
-            output.put(output_key(s,t), dat);
+    private void putGenerator(int[] deg, Generator<T> g)
+    {
+        synchronized(gensByMultidegree) {
+            Set<Generator<T>> s = gensByMultidegree.get(deg);
+            if(s != null)
+                s.add(g);
+            else {
+                s = new TreeSet<Generator<T>>();
+                s.add(g);
+                gensByMultidegree.put(deg,s);
+            }
         }
     }
 
@@ -61,17 +142,17 @@ public class BrunerBackend<T extends GradedElement<T>> implements Backend<T>
         if(Config.TIMING) start = System.currentTimeMillis();
 
         tasks = new PriorityBlockingQueue<BrunerResTask>();
-        claims = new HashSet<Integer>();
+        claims = new TreeSet<int[]>(Multidegrees.multidegComparator);
         putTask(new BrunerResTask(BrunerResTask.COMPUTE, 0, 0));
 
         for(int i = 0; i < Config.THREADS; i++)
             new BrunerResTaskThread(this).start();
     }
 
-    HashSet<Integer> claims;
+    TreeSet<int[]> claims;
     private boolean atomic_claim_grid(int s, int t)
     {
-        Integer key = output_key(s,t);
+        int[] key = new int[] {s,t};
         synchronized(claims) {
             if(claims.contains(key))
                 return false;
@@ -107,8 +188,8 @@ public class BrunerBackend<T extends GradedElement<T>> implements Backend<T>
         else
             okbasis = olddat.kbasis;
 
-        Map<Dot<T>,DModSet<T>> list_x = new HashMap<Dot<T>,DModSet<T>>();
-        Map<Dot<T>,DModSet<T>> list_dx = new HashMap<Dot<T>,DModSet<T>>();
+        Map<Dot<T>,DModSet<T>> list_x = new TreeMap<Dot<T>,DModSet<T>>();
+        Map<Dot<T>,DModSet<T>> list_dx = new TreeMap<Dot<T>,DModSet<T>>();
         ArrayList<DModSet<T>> ker = new ArrayList<DModSet<T>>();
         /* loop over existing dots in this bidegree */
         for(int gt = s; gt < t; gt++) {
@@ -199,20 +280,27 @@ public class BrunerBackend<T extends GradedElement<T>> implements Backend<T>
             if(Config.DEBUG) System.out.printf("adding a generator to kill %s\n", k);
             
             /* haven't yet killed this kernel class -- add a generator */
-            Generator<T> gen = new Generator<T>(s, t, gens.size());
+            
+            /* compute the novikov filtration */
+            int[] deg = new int[2 + alg.extraDegrees()];
+            deg[0] = s;
+            deg[1] = t;
+            for(int g = 2; g < deg.length; g++) {
+                int nov = -1;
+                for(Dot<T> o : k.keySet()) 
+                    if(nov == -1 || o.deg[g] < nov)
+                        nov = o.deg[g];
+                deg[g] = nov;
+            }
+
+            Generator<T> gen = new Generator<T>(deg, gens.size());
             gen.img = k;
 
             /* add this into the existing image */
             list_dx.put(k.lastKey(), k);
 
-            /* compute the novikov filtration */
-            gen.nov = -1;
-            for(Dot<T> o : k.keySet()) 
-                if(gen.nov == -1 || o.nov < gen.nov)
-                    gen.nov = o.nov;
-            if(Config.STDOUT) System.out.println("generator has extra grading "+gen.nov);
-
             gens.add(gen);
+            putGenerator(deg, gen);
         }
 
         /* okbasis is done (and modified), free it */
@@ -221,11 +309,9 @@ public class BrunerBackend<T extends GradedElement<T>> implements Backend<T>
 
         /* save the result -- at this point the computation is considered finished */
         dat.gens = gens;
-
+        ping(new int[] {s,t,-1});
 
         if(Config.STDOUT) System.out.printf("(%2d,%2d): %2d gen, %2d ker\n\n", s, t, dat.gens.size(), dat.kbasis.size());
-        if(listener != null)
-            listener.ping(s,t);
 
         if(Config.TIMING && s == t) {
             long elapsed = System.currentTimeMillis() - start;
@@ -249,11 +335,6 @@ public class BrunerBackend<T extends GradedElement<T>> implements Backend<T>
     {
         Main.die_if(isComputed(0,0), "Attempted to change resolving module after computation began.");
         module = m;
-    }
-
-    @Override public void register_listener(PingListener p)
-    {
-        listener = p;
     }
 }
 

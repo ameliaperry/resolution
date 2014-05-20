@@ -1,6 +1,5 @@
-package res;
+package res.algebra;
 
-import res.algebra.*;
 import java.util.*;
 
 public class Dot<T extends GradedElement<T>> implements Comparable<Dot<T>>
@@ -10,39 +9,36 @@ public class Dot<T extends GradedElement<T>> implements Comparable<Dot<T>>
     /* kernel basis vector */
     public T sq;
     public Generator<T> base;
-    public int s;
-    public int t;
+    public int[] deg;
     public int idx = -1;
-    public int nov = -1;
 
     public Dot(Generator<T> base, T sq) { /* square dot */
         this.base = base;
         this.sq = sq;
-        s = base.s;
-        t = base.t + sq.deg();
-        nov = base.nov + sq.nov();
+        deg = Arrays.copyOf(base.deg, base.deg.length);
+        deg[1] += sq.deg();
+        int[] ex = sq.extraGrading();
+        for(int i = 0; i < ex.length; i++)
+            deg[i+2] += ex[i];
     }
-
-    @Override public int hashCode()
-    {
-        int hash = sq.hashCode();
-        hash *= 27863521;
-        hash ^= t;
-        hash *= 27863521;
-        hash ^= base.idx;
-        return hash;
-    }
+    
     @Override public String toString()
     {
-        String ret = sq.toString() + "(" + base.t + ";" + base.idx + ")";
-        if(nov != -1)
-            ret += "(n=" + nov + ")";
+        String ret = sq.toString() + "(" + base.deg[1] + ";" + base.idx + ")";
+        if(deg.length > 2) {
+            ret += "(";
+            for(int g = 2; g < deg.length; g++) {
+                if(g != 2) ret += ",";
+                ret += deg[g];
+            }
+            ret += ")";
+        }
         return ret;
     }
     @Override public boolean equals(Object o)
     {
         Dot<?> d = (Dot<?>) o;
-        return (d.base.t == base.t && d.base.idx == base.idx && d.sq.equals(sq));
+        return (d.base.deg[1] == base.deg[1] && d.base.idx == base.idx && d.sq.equals(sq));
     }
 
     /*
@@ -53,8 +49,8 @@ public class Dot<T extends GradedElement<T>> implements Comparable<Dot<T>>
         /* XXX tweak this for performance */
 //        if(nov != -1 && o.nov != -1 && nov != o.nov)
 //            return o.nov - nov;
-        if(base.t != o.base.t)
-            return base.t - o.base.t;
+        if(base.deg[1] != o.base.deg[1])
+            return base.deg[1] - o.base.deg[1];
         if(base.idx != o.base.idx)
             return o.base.idx - base.idx;
         return sq.compareTo(o.sq);
