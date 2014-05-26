@@ -5,7 +5,7 @@ import java.util.*;
 
 public class TrivialDecorated<U extends MultigradedElement<U>, T extends MultigradedVectorSpace<U>> extends Decorated<U,T>
 {
-    TrivialDecorated(T t) {
+    public TrivialDecorated(T t) {
         super(t);
     }
 

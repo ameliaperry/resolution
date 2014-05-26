@@ -49,11 +49,6 @@ public class Main {
         /* algebra */
         GradedAlgebra<Sq> alg = new SteenrodAlgebra();
 
-        /* backend */
-        BrunerBackend<Sq> back;
-//        s = sd.back.getSelection().getActionCommand();
-        back = new BrunerBackend<Sq>(alg);
-
         /* module */
         GradedModule<Sq> mod;
         s = (String) sd.modcombo.getSelectedItem();
@@ -77,18 +72,16 @@ public class Main {
         } else
             mod = new Sphere<Sq>(alg);
 
-        back.setModule(mod);
-
-        /* decorators */
-        /* TODO this is currently hard-coded */
-        CompoundDecorated<Generator<Sq>,MultigradedAlgebra<Generator<Sq>>> dec = new CompoundDecorated<Generator<Sq>,MultigradedAlgebra<Generator<Sq>>>(back);
-
-        Collection<DifferentialRule> diffrules = new ArrayList<DifferentialRule>();
-//        diffrules.add(new DifferentialRule(new int[] {2,1,1}, new int[] {1,1,0}, Color.green));
-//        diffrules.add(new DifferentialRule(new int[] {1,0,2}, new int[] {0,0,1}, Color.red));
-        dec.add(new DifferentialDecorated<Generator<Sq>,MultigradedAlgebra<Generator<Sq>>>(back, diffrules));
-
-        /* TODO add product decorated */
+        /* backend */
+        s = sd.back.getSelection().getActionCommand();
+        Backend<Generator<Sq>, ? extends MultigradedVectorSpace<Generator<Sq>>> back = null;
+        if(s == SettingsDialog.BACKBRUNER) {
+            BrunerBackend<Sq> brunerback = new BrunerBackend<Sq>(alg);
+            brunerback.setModule(mod);
+            back = brunerback;
+        } else if(s == SettingsDialog.BACKQ0)
+            back = new CotorLiftingBackend();
+        Decorated<Generator<Sq>, ? extends MultigradedVectorSpace<Generator<Sq>>> dec = back.getDecorated();
 
         /* frontend */
         s = sd.front.getSelection().getActionCommand();

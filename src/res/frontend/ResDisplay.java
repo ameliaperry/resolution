@@ -22,8 +22,8 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
     int[] minfilt;
     int[] maxfilt;
 
-    int viewx = 30;
-    int viewy = -40;
+    int viewx = 45;
+    int viewy = -45;
     int selx = -1;
     int sely = -1;
     int mx = -1;
@@ -139,31 +139,31 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
         /* assign dots a location; at this point we definitively decide what's visible */
         Set<U> frameVisibles = new TreeSet<U>();
-        Map<U,int[]> pos = new TreeMap<U,int[]>();
+        TreeMap<U,int[]> pos = new TreeMap<U,int[]>();
         g.setColor(Color.black);
         for(int x = min_x_visible; x <= max_x_visible; x++) {
             for(int y = min_y_visible; y <= max_y_visible; y++) {
+                int cx = getcx(x);
+                int cy = getcy(y);
                 if(!under.isComputed(multideg(x,y))) {
-                    int cx = getcx(x);
-                    int cy = getcy(y);
                     g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                     continue;
                 }
         
                 Collection<U> gens = under.gens(multideg(x,y));
 
-                int cx = getcx(x);
-                int cy = getcy(y);
-
                 int visible = 0;
-                for(U d : gens) if(isVisible(d)) {
-                    frameVisibles.add(d);
-                    visible++;
-                }
-                int offset = -5 * visible / 2;
-                for(U d : gens) if(frameVisibles.contains(d)) {
-                    pos.put(d, new int[] { cx + offset, cy - offset/2 });
-                    offset += 5;
+                synchronized(gens) {
+                    for(U d : gens) if(isVisible(d)) {
+                        frameVisibles.add(d);
+                        visible++;
+                    }
+                    int offset = -5 * (visible-1) / 2;
+                    for(U d : gens) if(frameVisibles.contains(d)) {
+                        int[] newpos = new int[] { cx + offset, cy - offset/2 };
+                        pos.put(d, newpos);
+                        offset += 5;
+                    }
                 }
             }
         }
@@ -192,7 +192,9 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
         /* draw dots */
         g.setColor(Color.black);
-        for(int[] p : pos.values()) {
+//        for(int[] p : pos.values()) {
+        for(U d : frameVisibles) {
+            int[] p = pos.get(d);
             g.fillOval(p[0]-2, p[1]-2, 5, 5);
         }
 
@@ -230,8 +232,11 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 //        Arrays.sort(gens);
 
         String ret = "Bidegree ("+x+","+y+")\n";
-        for(U d : gens) if(isVisible(d))
+        for(U d : gens) if(isVisible(d)) {
             ret += "\n" + d.toString();
+            ret += "\n" + d.extraInfo();
+            ret += "\n";
+        }
         textarea.setText(ret);
     }
 
@@ -297,58 +302,72 @@ class ControlPanel2D extends Box {
     {
         super(BoxLayout.Y_AXIS);
 
-        /*final JSpinner s1 = new JSpinner(new SpinnerNumberModel(0,0,1000,1));
-        final JSpinner s2 = new JSpinner(new SpinnerNumberModel(5,0,1000,1));
+        setup_gui(parent);
+    }
 
-        s1.addChangeListener(new ChangeListener() {
-            public void stateChanged(ChangeEvent e) {
-                parent.min_filt = (Integer) s1.getValue();
-                parent.setSelected(parent.selx, parent.sely);
-                parent.repaint();
-            }
-        });
-        
-        s2.addChangeListener(new ChangeListener() {
-            public void stateChanged(ChangeEvent e) {
-                parent.max_filt = (Integer) s2.getValue();
-                parent.setSelected(parent.selx, parent.sely);
-                parent.repaint();
-            }
-        });
+    void setup_gui(final ResDisplay<?> parent)
+    {
 
-        KeyboardFocusManager.getCurrentKeyboardFocusManager()
-            .addKeyEventDispatcher(new KeyEventDispatcher() {
-            @Override public boolean dispatchKeyEvent(KeyEvent e) {
-                if(e.getID() != KeyEvent.KEY_PRESSED)
-                    return false;
-                switch(e.getKeyCode()) {
-                    case KeyEvent.VK_PAGE_UP:
-                        s1.setValue( ((Integer) s1.getValue()) + 1);
-                        s2.setValue( ((Integer) s2.getValue()) + 1);
-                        return true;
-                    case KeyEvent.VK_PAGE_DOWN:
-                        s1.setValue( ((Integer) s1.getValue()) - 1);
-                        s2.setValue( ((Integer) s2.getValue()) - 1);
-                        return true;
-                    default:
-                        return false;
+        /* filtration sliders */
+        for(int i = 2; i < parent.minfilt.length; i++) {
+            final int icopy = i;
+
+            final JSpinner s1 = new JSpinner(new SpinnerNumberModel(parent.minfilt[i],0,1000,1));
+            final JSpinner s2 = new JSpinner(new SpinnerNumberModel(parent.maxfilt[i],0,1000,1));
+
+            s1.addChangeListener(new ChangeListener() {
+                public void stateChanged(ChangeEvent e) {
+                    parent.minfilt[icopy] = (Integer) s1.getValue();
+                    parent.setSelected(parent.selx, parent.sely);
+                    parent.repaint();
                 }
+            });
+            
+            s2.addChangeListener(new ChangeListener() {
+                public void stateChanged(ChangeEvent e) {
+                    parent.maxfilt[icopy] = (Integer) s2.getValue();
+                    parent.setSelected(parent.selx, parent.sely);
+                    parent.repaint();
+                }
+            });
+
+            if(i == 2) {
+                KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                    .addKeyEventDispatcher(new KeyEventDispatcher() {
+                    @Override public boolean dispatchKeyEvent(KeyEvent e) {
+                        if(e.getID() != KeyEvent.KEY_PRESSED)
+                            return false;
+                        switch(e.getKeyCode()) {
+                            case KeyEvent.VK_PAGE_UP:
+                                s1.setValue( ((Integer) s1.getValue()) + 1);
+                                s2.setValue( ((Integer) s2.getValue()) + 1);
+                                return true;
+                            case KeyEvent.VK_PAGE_DOWN:
+                                s1.setValue( ((Integer) s1.getValue()) - 1);
+                                s2.setValue( ((Integer) s2.getValue()) - 1);
+                                return true;
+                            default:
+                                return false;
+                        }
+                    }
+                });
             }
-        });
 
-        Dimension smin = new Dimension(0,30);
-        s1.setMinimumSize(smin);
-        s2.setMinimumSize(smin);
-        s1.setPreferredSize(smin);
-        s2.setPreferredSize(smin);
+            Dimension smin = new Dimension(0,30);
+            s1.setMinimumSize(smin);
+            s2.setMinimumSize(smin);
+            s1.setPreferredSize(smin);
+            s2.setPreferredSize(smin);
 
-        add(new JLabel("Novikov filtration:"));
-        add(new JLabel("min:"));
-        add(s1);
-        add(new JLabel("max:"));
-        add(s2);
-        add(Box.createVerticalStrut(20));
+            add(new JLabel("Filtration "+(i-1)+":"));
+            add(new JLabel("min:"));
+            add(s1);
+            add(new JLabel("max:"));
+            add(s2);
+            add(Box.createVerticalStrut(20));
+        }
 
+        /*
         final JCheckBox diff = new JCheckBox("Alg Novikov differentials");
         diff.setSelected(false);
         diff.addActionListener(new ActionListener() {
@@ -404,6 +423,7 @@ class ControlPanel2D extends Box {
             add(h);
         }
         add(Box.createVerticalStrut(20));
+        */
 
         parent.textarea = new JTextArea();
         parent.textarea.setMaximumSize(new Dimension(250,3000));
@@ -414,8 +434,6 @@ class ControlPanel2D extends Box {
         textsp.setPreferredSize(new Dimension(250,3000));
         textsp.setAlignmentX(-1.0f);
         add(textsp);
-
-        */
     }
 
 }

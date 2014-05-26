@@ -52,7 +52,7 @@ public class Sq implements GradedElement<Sq>
         return exc;
     }
 
-    ModSet<Sq> times(Sq o)
+    public ModSet<Sq> times(Sq o)
     {
         int[] ret = new int[q.length + o.q.length];
         for(int i = 0; i < q.length; i++)

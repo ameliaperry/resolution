@@ -7,7 +7,7 @@ public class DModSet<T extends GradedElement<T>> extends ModSet<Dot<T>>
 {
     public DModSet() {}
     public DModSet(Dot<T> d) {
-        add(d,1);
+        super(d);
     }
 
     public DModSet<T> times(T sq, GradedAlgebra<T> alg)

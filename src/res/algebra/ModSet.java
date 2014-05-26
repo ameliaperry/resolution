@@ -7,6 +7,9 @@ import java.util.*;
 public class ModSet<T> extends TreeMap<T,Integer>
 {
     public ModSet() {}
+    public ModSet(T t) {
+        add(t,1);
+    }
     public ModSet(Comparator<? super T> comp) {
         super(comp);
     }
@@ -68,6 +71,20 @@ public class ModSet<T> extends TreeMap<T,Integer>
             if(e.getValue() != 1)
                 s += e.getValue();
             s += e.getKey().toString();
+        }
+        return s;
+    }
+    
+    public String toString(Stringifier<T> strf) {
+        if(isEmpty())
+            return "0";
+        String s = "";
+        for(Map.Entry<T,Integer> e : entrySet()) {
+            if(s.length() != 0)
+                s += " + ";
+            if(e.getValue() != 1)
+                s += e.getValue();
+            s += strf.toString(e.getKey());
         }
         return s;
     }

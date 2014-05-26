@@ -13,8 +13,8 @@ public class ExcessModule extends GradedModule<Sq>
 
     public ExcessModule(int k, GradedAlgebra<Sq> alg)
     {
-        /* XXX this should follow the number of extra gradings on alg */
-        g = new Generator<Sq>(new int[] {-1,0}, 0);
+        /* XXX the extra-grading behavior is probably very broken */ 
+        g = new Generator<Sq>(new int[] {-1,0,k}, 0);
         this.alg = alg;
         this.K = k;
     }
@@ -33,7 +33,7 @@ public class ExcessModule extends GradedModule<Sq>
 
     @Override public DModSet<Sq> act(Dot<Sq> a, Sq b)
     {
-        ModSet<Sq> prelim = alg.times(a.sq, b);
+        ModSet<Sq> prelim = alg.times(b, a.sq); /* left module */
         DModSet<Sq> ret = new DModSet<Sq>();
         for(Map.Entry<Sq,Integer> ent : prelim.entrySet()) 
             if(ent.getKey().excess() <= K)

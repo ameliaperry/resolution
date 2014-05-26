@@ -2,13 +2,16 @@ package res.backend;
 
 import res.*;
 import res.algebra.*;
+import res.transform.*;
 import java.util.*;
 import java.util.concurrent.*;
 
 
 /* Computes Ext_A^{s,t} (M, Z/2) through a minimal resolution of M, following a paper of Bruner. */
 
-public class BrunerBackend<T extends GradedElement<T>> extends MultigradedAlgebra<Generator<T>>
+public class BrunerBackend<T extends GradedElement<T>>
+    extends MultigradedAlgebra<Generator<T>>
+    implements Backend<Generator<T>, MultigradedAlgebra<Generator<T>>>
 {
     private final GradedAlgebra<T> alg;
     private GradedModule<T> module;
@@ -335,6 +338,20 @@ public class BrunerBackend<T extends GradedElement<T>> extends MultigradedAlgebr
     {
         Main.die_if(isComputed(0,0), "Attempted to change resolving module after computation began.");
         module = m;
+    }
+
+    public Decorated<Generator<T>, MultigradedAlgebra<Generator<T>>> getDecorated()
+    {
+        CompoundDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>> dec = new CompoundDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>>(this);
+
+        Collection<DifferentialRule> diffrules = new ArrayList<DifferentialRule>();
+//        diffrules.add(new DifferentialRule(new int[] {2,1,1}, new int[] {1,1,0}, Color.green));
+//        diffrules.add(new DifferentialRule(new int[] {1,0,2}, new int[] {0,0,1}, Color.red));
+        dec.add(new DifferentialDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>>(this, diffrules));
+
+        /* TODO add product decorated */
+
+        return dec;
     }
 }
 

@@ -5,7 +5,8 @@ public class Generator<T extends GradedElement<T>> implements MultigradedElement
     public DModSet<T> img;
 
     public int[] deg;
-    int idx;
+    public int idx;
+    public String extraInfo = "";
     
     public Generator(int[] deg, int idx)
     {
@@ -27,5 +28,21 @@ public class Generator<T extends GradedElement<T>> implements MultigradedElement
     @Override public int[] deg()
     {
         return deg;
+    }
+
+    @Override public boolean equals(Object o)
+    {
+        Generator<?> g = (Generator<?>) o;
+        for(int i = 0; i < idx; i++)
+            if(deg[i] != g.deg[i])
+                return false;
+        return (idx == g.idx);
+    }
+
+    @Override public String extraInfo()
+    {
+        String ret = extraInfo;
+        ret += "Image: "+img;
+        return ret;
     }
 }

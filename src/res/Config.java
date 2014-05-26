@@ -6,7 +6,7 @@ public class Config
     public static int P = 2;
     public static int THREADS = 1;
     public static int T_CAP = 100;
-    public static boolean MICHAEL_MODE = true;
+    public static boolean MICHAEL_MODE = false;
 
     /* not configurable from settings dialog */
     public static final boolean DEBUG = false;

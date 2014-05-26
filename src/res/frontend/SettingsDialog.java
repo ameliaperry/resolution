@@ -15,6 +15,7 @@ public class SettingsDialog extends JDialog
     public static final String MODCOFSIGMA = "cofib(\u03c3)";
     public static final String MODEXCESS = "excess\u2264t";
     public static final String BACKBRUNER = "backbruner";
+    public static final String BACKQ0 = "backQ(0)";
 //    public static final String BACKOLD = "backold";
 
     static final Integer[] PRIMES = new Integer[] { 2, 3, 5, 7, 11, 13 };
@@ -73,15 +74,15 @@ public class SettingsDialog extends JDialog
         b_maxt.add(Box.createHorizontalGlue());
 
         Box b_back = Box.createHorizontalBox();
-        JRadioButton back_bruner = new JRadioButton("bruner", true);
-//        JRadioButton back_old = new JRadioButton("old");
+        JRadioButton back_q0 = new JRadioButton("Q(0)", true);
+        JRadioButton back_bruner = new JRadioButton("bruner");
+        back_q0.setActionCommand(BACKQ0);
         back_bruner.setActionCommand(BACKBRUNER);
-//        back_old.setActionCommand(BACKOLD);
+        back.add(back_q0);
         back.add(back_bruner);
-//        back.add(back_old);
         b_back.add(new JLabel("Backend:"));
+        b_back.add(back_q0);
         b_back.add(back_bruner);
-//        b_back.add(back_old);
         
         Box b_threads = Box.createHorizontalBox();
         threads = new JSpinner(new SpinnerNumberModel(Config.THREADS, 1, 10000, 1));
