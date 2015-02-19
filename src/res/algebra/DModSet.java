@@ -33,4 +33,13 @@ public class DModSet<T extends GradedElement<T>> extends ModSet<Dot<T>>
         }
         return ret;
     }
+
+    public DModSet<T> dscaled(int scale)
+    {
+        DModSet<T> ret = new DModSet<T>();
+        for(Map.Entry<Dot<T>,Integer> e1 : entrySet())
+            ret.put(e1.getKey(), e1.getValue() * scale);
+        return ret;
+
+    }
 }

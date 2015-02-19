@@ -31,7 +31,15 @@ public class ModSet<T> extends TreeMap<T,Integer>
     public void add(ModSet<T> d, int mult)
     {
         for(Map.Entry<T,Integer> e : d.entrySet())
-            add(e.getKey(), e.getValue());
+            add(e.getKey(), e.getValue() * mult);
+    }
+
+    public ModSet<T> scaled(int scale)
+    {
+        ModSet<T> ret = new ModSet<T>();
+        for(Map.Entry<T,Integer> e : entrySet())
+            ret.add(e.getKey(), e.getValue() * scale);
+        return ret;
     }
 
     public int getsafe(T d)
