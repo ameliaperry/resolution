@@ -16,7 +16,7 @@ public class Sq implements GradedElement<Sq>
 
     public int[] q; /* Indices of the power operations.
                 Mod 2, i indicates Sq^i.
-                Mod p>2, 2k(p-1) indicates P^i, 2k(p-1)+1 indicates B P^i. */
+                Mod p>2, 2i(p-1) indicates P^i, 2i(p-1)+1 indicates B P^i. */
 
 
     public Sq(int[] qq) { q = qq; }
@@ -24,15 +24,25 @@ public class Sq implements GradedElement<Sq>
     private static final int[] EMPTY = new int[] {};
     private static final int[] ZERO = new int[] {0};
     private static final int[] ONE = new int[] {1};
+    private static final int[][] SINGLETONS = new int[10000][1];
+    static {
+        for(int i = 0; i < 10000; i++) { SINGLETONS[i][0] = i; }
+    }
+
     /* novikov filtration is 1 if there are no betas. this returns 1 for the
      * identity operation; is this okay? */
     @Override public int[] extraGrading()
     {
-        if(!Config.MICHAEL_MODE) return EMPTY;
-        for(int i : q)
-            if(i % Config.P != 0)
-                return ZERO;
-        return ONE;
+        if(Config.MICHAEL_MODE) {
+            for(int i : q)
+                if(i % Config.P != 0)
+                    return ZERO;
+            return ONE;
+        } else if(Config.MOTIVIC_GRADING) {
+            int tot = 0;
+            for(int a : q) tot += a/2;
+            return SINGLETONS[tot];
+        } else return EMPTY;
     }
 
     @Override public int deg()

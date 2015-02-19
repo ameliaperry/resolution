@@ -37,6 +37,9 @@ public class Main {
 
         /* p=2 mode */
         Config.MICHAEL_MODE = sd.oddrel.isSelected();
+        
+        /* motivic grading */
+        Config.MOTIVIC_GRADING = sd.motivg.isSelected();
 
         /* T cap */
         Config.T_CAP = (Integer) sd.maxt.getValue();

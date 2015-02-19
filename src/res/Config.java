@@ -7,6 +7,7 @@ public class Config
     public static int THREADS = 1;
     public static int T_CAP = 100;
     public static boolean MICHAEL_MODE = false;
+    public static boolean MOTIVIC_GRADING = false;
 
     /* not configurable from settings dialog */
     public static final boolean DEBUG = false;

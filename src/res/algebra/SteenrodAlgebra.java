@@ -29,8 +29,8 @@ public class SteenrodAlgebra implements GradedAlgebra<Sq>
 
     @Override public int extraDegrees()
     {
-        if(Config.MICHAEL_MODE && Config.P == 2)
-            return 1;
+        if(Config.MICHAEL_MODE && Config.P == 2) return 1;
+        if(Config.MOTIVIC_GRADING) return 1;
         return 0;
     }
 
