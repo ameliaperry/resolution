@@ -185,7 +185,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
             for(UnbasedLineDecoration<U> d : dec.getUnbasedLineDecorations(u)) {
                 g.setColor(d.color);
                 int destx = getcx(d.dest[0]);
-                int desty = getcx(d.dest[1]);
+                int desty = getcy(d.dest[1]);
                 g.drawLine(p1[0], p1[1], destx, desty);
             }
         }
@@ -429,6 +429,7 @@ class ControlPanel2D extends Box {
         parent.textarea.setMaximumSize(new Dimension(250,3000));
         parent.textarea.setPreferredSize(new Dimension(250,3000));
         parent.textarea.setEditable(false);
+        parent.textarea.setLineWrap(true);
         JScrollPane textsp = new JScrollPane(parent.textarea, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         textsp.setMaximumSize(new Dimension(250,3000));
         textsp.setPreferredSize(new Dimension(250,3000));

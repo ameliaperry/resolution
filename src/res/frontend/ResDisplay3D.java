@@ -30,7 +30,7 @@ public class ResDisplay3D<U extends MultigradedElement<U>> extends JPanel implem
     double viewscale = 1000.0;
     double[][] mtx = {{1,0,0},{0,1,0},{0,0,1}};
     double[] center = new double[] {30,30,0};
-    boolean perspective = true;
+    boolean perspective = false;
 
 
     private ResDisplay3D(Decorated<U, ? extends MultigradedVectorSpace<U>> dec)

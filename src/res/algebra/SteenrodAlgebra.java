@@ -27,6 +27,15 @@ public class SteenrodAlgebra implements GradedAlgebra<Sq>
         return Sq.UNIT;
     }
 
+    @Override public List<Sq> distinguished()
+    {
+        ArrayList<Sq> ret = new ArrayList<Sq>();
+        ret.add(Sq.HOPF[0]);
+        ret.add(Sq.HOPF[1]);
+        ret.add(Sq.HOPF[2]);
+        return ret;
+    }
+
     @Override public int extraDegrees()
     {
         if(Config.MICHAEL_MODE && Config.P == 2) return 1;

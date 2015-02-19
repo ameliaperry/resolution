@@ -1,10 +1,12 @@
 package res.transform;
 
 import res.algebra.*;
+import java.awt.Color;
 import java.util.*;
 
-public class ProductDecorated<U extends MultigradedElement<U>, T extends MultigradedAlgebra<U>> extends Decorated<U,T>
+public class ProductDecorated<U extends GradedElement<U>, T extends MultigradedAlgebra<Generator<U>>> extends Decorated<Generator<U>,T>
 {
+
     Collection<ProductRule> rules;
 
     public ProductDecorated(T und, Collection<ProductRule> rules)
@@ -13,22 +15,18 @@ public class ProductDecorated<U extends MultigradedElement<U>, T extends Multigr
         this.rules = rules;
     }
 
-    @Override public boolean isVisible(U u)
+    @Override public Collection<BasedLineDecoration<Generator<U>>> getBasedLineDecorations(Generator<U> g)
     {
-        /* TODO */
-        return true;
-    }
+        ArrayList<BasedLineDecoration<Generator<U>>> ret = new ArrayList<BasedLineDecoration<Generator<U>>>();
 
-    @Override public Collection<BasedLineDecoration<U>> getBasedLineDecorations(U u)
-    {
-        /* TODO */
-        return null;
-    }
+        for(ProductRule rule : rules) if(!rule.hide) {
+            for(Dot<U> dot : g.img.keySet()) {
+                if(dot.sq.equals(rule.trigger))
+                    ret.add(new BasedLineDecoration<Generator<U>>(g, dot.base, rule.color));
+            }
+        }
 
-    @Override public Collection<UnbasedLineDecoration<U>> getUnbasedLineDecorations(U u)
-    {
-        /* TODO */
-        return null;
+        return ret;
     }
 }
 

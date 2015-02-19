@@ -3,6 +3,7 @@ package res.backend;
 import res.*;
 import res.algebra.*;
 import res.transform.*;
+import java.awt.Color;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -351,7 +352,12 @@ public class BrunerBackend<T extends GradedElement<T>>
 //        diffrules.add(new DifferentialRule(new int[] {1,0,2}, new int[] {0,0,1}, Color.red));
         dec.add(new DifferentialDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>>(this, diffrules));
 
-        /* TODO add product decorated */
+        Collection<ProductRule> prodrules = new ArrayList<ProductRule>();
+        Color[] colors = new Color[] { new Color(128,0,0), new Color(0,128,0), new Color(0,0,128) };
+        List<T> distinguished = alg.distinguished();
+        for(int i = 0; i < colors.length && i < distinguished.size(); i++)
+            prodrules.add(new ProductRule("h_"+i, distinguished.get(i), true, false, false, colors[i]));
+        dec.add(new ProductDecorated<T,MultigradedAlgebra<Generator<T>>>(this, prodrules));
 
         return dec;
     }
