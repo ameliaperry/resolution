@@ -9,17 +9,19 @@ public class SettingsDialog extends JDialog
     public static final String FRONT2D = "front2d";
     public static final String FRONT3D = "front3d";
     public static final String MODSPHERE = "Sphere";
+    public static final String MODBRUNER = "import bruner MDF";
     public static final String MODCOF2 = "cofib(2)";
     public static final String MODCOFETA = "cofib(\u03b7)";
     public static final String MODCOFNU = "cofib(\u03bd)";
     public static final String MODCOFSIGMA = "cofib(\u03c3)";
+    public static final String MODA1 = "A(1)";
     public static final String MODEXCESS = "excess\u2264t";
     public static final String BACKBRUNER = "backbruner";
     public static final String BACKQ0 = "backQ(0)";
 //    public static final String BACKOLD = "backold";
 
     static final Integer[] PRIMES = new Integer[] { 2, 3, 5, 7, 11, 13 };
-    static final String[] MODULES = new String[] { MODSPHERE, MODCOF2, MODCOFETA, MODCOFNU, MODCOFSIGMA, MODEXCESS };
+    static final String[] MODULES = new String[] { MODSPHERE, MODBRUNER, MODCOF2, MODCOFETA, MODCOFNU, MODCOFSIGMA, MODA1, MODEXCESS };
 
     /* XXX instead of publically exposing UI elements, should offer getters */
     public ButtonGroup front;
@@ -28,6 +30,7 @@ public class SettingsDialog extends JDialog
     public JComboBox<Integer> prime;
     public JComboBox<String> modcombo;
     public JCheckBox oddrel;
+    public JCheckBox motivg;
     public JSpinner maxt;
     public JSpinner threads;
 
@@ -66,6 +69,10 @@ public class SettingsDialog extends JDialog
         Box b_oddrel = Box.createHorizontalBox();
         oddrel = new JCheckBox("Odd relations for p=2:", Config.MICHAEL_MODE);
         b_oddrel.add(oddrel);
+        
+        Box b_motivg = Box.createHorizontalBox();
+        motivg = new JCheckBox("Use motivic grading:", Config.MOTIVIC_GRADING);
+        b_motivg.add(motivg);
 
         Box b_maxt = Box.createHorizontalBox();
         maxt = new JSpinner(new SpinnerNumberModel(Config.T_CAP, 1, 10000, 1));
@@ -74,15 +81,15 @@ public class SettingsDialog extends JDialog
         b_maxt.add(Box.createHorizontalGlue());
 
         Box b_back = Box.createHorizontalBox();
-        JRadioButton back_q0 = new JRadioButton("Q(0)", true);
-        JRadioButton back_bruner = new JRadioButton("bruner");
-        back_q0.setActionCommand(BACKQ0);
+        JRadioButton back_bruner = new JRadioButton("bruner", true);
+        JRadioButton back_q0 = new JRadioButton("Q(0)");
         back_bruner.setActionCommand(BACKBRUNER);
-        back.add(back_q0);
+        back_q0.setActionCommand(BACKQ0);
         back.add(back_bruner);
+        back.add(back_q0);
         b_back.add(new JLabel("Backend:"));
-        b_back.add(back_q0);
         b_back.add(back_bruner);
+        b_back.add(back_q0);
         
         Box b_threads = Box.createHorizontalBox();
         threads = new JSpinner(new SpinnerNumberModel(Config.THREADS, 1, 10000, 1));
@@ -110,6 +117,7 @@ public class SettingsDialog extends JDialog
         getContentPane().add(b_mod);
         getContentPane().add(b_prime);
         getContentPane().add(b_oddrel);
+        getContentPane().add(b_motivg);
         getContentPane().add(b_maxt);
         getContentPane().add(b_back);
         getContentPane().add(b_threads);

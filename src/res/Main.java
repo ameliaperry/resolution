@@ -52,7 +52,9 @@ public class Main {
         /* module */
         GradedModule<Sq> mod;
         s = (String) sd.modcombo.getSelectedItem();
-        if(s == SettingsDialog.MODCOF2)
+        if(s == SettingsDialog.MODBRUNER)
+            mod = new BrunerNotationModule(alg);
+        else if(s == SettingsDialog.MODCOF2)
             mod = new CofibHopf(0,alg);
         else if(s == SettingsDialog.MODCOFETA)
             mod = new CofibHopf(1,alg);
@@ -60,6 +62,8 @@ public class Main {
             mod = new CofibHopf(2,alg);
         else if(s == SettingsDialog.MODCOFSIGMA)
             mod = new CofibHopf(3,alg);
+        else if(s == SettingsDialog.MODA1)
+            mod = new A1(alg);
         else if(s == SettingsDialog.MODEXCESS) {
             int exct = -1;
             while(exct < 0) {
