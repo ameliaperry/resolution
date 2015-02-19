@@ -3,18 +3,20 @@ package res.backend;
 import res.*;
 import res.algebra.*;
 import res.transform.*;
+import java.awt.Color;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.Map.Entry;
 import javax.swing.JOptionPane;
 
 
-/* Computes Ext_A^{s,t} (M, Z/2) through a minimal resolution of M, following a paper of CotorLifting. */
+/* Computes Cotor^{s,w,t}(F_2, Q(0)), by separately computing minimal resolutions for H*(K(Z/2, w)) and doubling degree. */
 
 public class CotorLiftingBackend
     extends MultigradedVectorSpace<Generator<Sq>>
     implements Backend<Generator<Sq>, MultigradedVectorSpace<Generator<Sq>>>
 {
+    final boolean COMPUTE_ALL_QTRANS = false;
 
     private final GradedAlgebra<Sq> alg = new SteenrodAlgebra();
 
@@ -72,14 +74,12 @@ public class CotorLiftingBackend
 
     @Override public boolean isVanishing(int[] i)
     {
-        if(i.length < 2) return true;
-        for(int j = 0; j < i.length; j++) {
-            if(i[j] < 0) return true;
-        }
-        if(i[1] < i[0]) return true;
-        if(i.length >= 3 && i[2] > i[0]) /* XXX hack this is just for the Steenrod. should query the GradedAlgebra */
-            return true;
-        return false;
+        if(i.length == 2) {
+            return (i[0] < 0 || i[1] < i[0]);
+        } else if(i.length == 3) {
+            /* XXX can do better than this */
+            return (i[0] < 0 || i[1] < 0 || i[2] < 0);
+        } else return true;
     }
 
 
@@ -135,24 +135,26 @@ public class CotorLiftingBackend
     {
         //runTests();
 
-        while(true) {
-            String in = JOptionPane.showInputDialog("Input a tridegree s,t,u (e.g. 2,1,10):");
-            String[] tok = in.split(",");
-            if(tok.length == 0) break;
-            if(tok.length != 3) continue;
+        if(! COMPUTE_ALL_QTRANS) {
+            while(true) {
+                String in = JOptionPane.showInputDialog("Input a tridegree s,t,u (e.g. 2,1,10):");
+                String[] tok = in.split(",");
+                if(tok.length == 0) break;
+                if(tok.length != 3) continue;
 
-            try { 
-                int is = Integer.parseInt(tok[0]);
-                int it = Integer.parseInt(tok[1]);
-                int iu = Integer.parseInt(tok[2]);
+                try { 
+                    int is = Integer.parseInt(tok[0]);
+                    int it = Integer.parseInt(tok[1]);
+                    int iu = Integer.parseInt(tok[2]);
 
-                if(iu % 2 != 0) continue;
+                    if(iu % 2 != 0) continue;
 
-                posts = is;
-                postt = iu / 2;
-                postw = it;
-            } catch(NumberFormatException e) { continue; }
-            break;
+                    posts = is;
+                    postt = iu / 2;
+                    postw = it;
+                } catch(NumberFormatException e) { continue; }
+                break;
+            }
         }
 
         tasks = new PriorityBlockingQueue<CotorLiftingResTask>();
@@ -459,7 +461,7 @@ public class CotorLiftingBackend
                     int[] sq = new int[q.q.length-1];
                     for(int j = 0; j < sq.length; j++)
                         sq[j] = 1<<(sq.length-j-1);
-                    key[i] = new Sq(sq);
+                    key[w-i-1] = new Sq(sq);
                     q = q.reduce();
                 }
 
@@ -561,18 +563,41 @@ public class CotorLiftingBackend
             Sq[] s = ent.getKey();
 
             int i = s.length - 1;
-            ModSet<Sq[]> diag = diagonal(s[i]);
+            ModSet<Sq[]> diag = filter_diagonal(s[i]);
             for(Entry<Sq[],Integer> ent2 : diag.entrySet()) {
-                Sq[] newEntry = new Sq[s.length+1];
-                for(int j = 0; j < i; j++) newEntry[j] = s[j];
+                Sq[] newEntry = Arrays.copyOf(s, s.length+1);
                 newEntry[i] = ent2.getKey()[0];
                 newEntry[i+1] = ent2.getKey()[1];
-                for(int j = i+1; j < s.length; j++) newEntry[j+1] = s[j];
+
+                if(newEntry[i+1].deg() < newEntry[i].deg())
+                    continue;
+                if(i != 0 && newEntry[i].deg() < newEntry[i-1].deg())
+                    continue;
 
                 ret.add(newEntry, ent2.getValue() * ent.getValue());
             }
         }
 
+        System.out.printf("%d-itd diag of %s is %s\n", w, q, ret.toString(sqArrayStringifier));
+
+        return ret;
+    }
+
+    /* here we throw out all diagonal terms whose LHS has excess greater than 1 */
+    private static Map<Sq,ModSet<Sq[]>> filter_diagonal_cache = new TreeMap<Sq,ModSet<Sq[]>>();
+    private static ModSet<Sq[]> filter_diagonal(Sq q)
+    {
+        ModSet<Sq[]> ret = filter_diagonal_cache.get(q);
+        if(ret != null) return ret;
+
+        ret = new ModSet<Sq[]>(sqArrayComparator);
+
+        ModSet<Sq[]> orig = diagonal(q);
+        for(Entry<Sq[],Integer> ent : orig.entrySet())
+            if(ent.getKey()[0].excess() <= 1)
+                ret.put(ent.getKey(), ent.getValue());
+        
+        filter_diagonal_cache.put(q,ret);
         return ret;
     }
 
@@ -639,34 +664,44 @@ public class CotorLiftingBackend
 
 
     /* admin */
-    public Decorated<Generator<Sq>, MultigradedVectorSpace<Generator<Sq>>> getDecorated() {
-        return new TrivialDecorated<Generator<Sq>, MultigradedVectorSpace<Generator<Sq>>>(this);
+    public Decorated<Generator<Sq>, MultigradedVectorSpace<Generator<Sq>>> getDecorated()
+    {
+        CompoundDecorated<Generator<Sq>,MultigradedVectorSpace<Generator<Sq>>> dec = new CompoundDecorated<Generator<Sq>,MultigradedVectorSpace<Generator<Sq>>>(this);
+
+        Collection<DifferentialRule> diffrules = new ArrayList<DifferentialRule>();
+        diffrules.add(new DifferentialRule(new int[] {1,0,1}, new int[] {0,0,1}, Color.green));
+        diffrules.add(new DifferentialRule(new int[] {3,1,-2}, new int[] {2,1,-2}, Color.red));
+        dec.add(new DifferentialDecorated<Generator<Sq>,MultigradedVectorSpace<Generator<Sq>>>(this, diffrules));
+
+        /* TODO add product decorated */
+
+        return dec;
     }
 
     private void runTests()
     {
         System.out.println("TESTS:");
         
-        for(Sq q : alg.basis(6))
-            System.out.println("Diagonal of "+q+" is " + diagonal(q).toString(sqArrayStringifier));
+        iterated_diagonal(new Sq(new int[] {6,1}), 1).toString(sqArrayStringifier);
 
         System.out.println();
 
-        for(int i = 0; i < 8; i++) {
+        int i = 8;
+//        for(int i = 0; i < 8; i++)
             for(Sq q : alg.basis(i)) {
-                System.out.println("Double diagonal of "+q+" is " + iterated_diagonal(q,2).toString(sqArrayStringifier));
+                iterated_diagonal(q,10);
+                System.out.println();
             }
-        }
 
 
-        int s = 3;
+/*        int s = 3;
         int t = 9;
         int w = 2;
         System.out.printf("Q basis in (%d,%d,%d):\n", s,t,w);
         for(QMonom q : QMonom.basis(s,t,w))
-            System.out.println(q);
+            System.out.println(q);*/
 
-//        System.exit(0);
+        System.exit(0);
     }
 
 }
@@ -702,7 +737,7 @@ class CotorLiftingResTaskThread extends Thread
                     back.compute(t.s, t.t, t.w);
                     break;
                 case CotorLiftingResTask.POSTPROCESS:
-                   if(t.s == back.posts && t.t == back.postt && t.w == back.postw)
+                   if(back.COMPUTE_ALL_QTRANS || (t.s == back.posts && t.t == back.postt && t.w == back.postw))
                         back.postprocess(t.s, t.t, t.w);
                     break;
                 default:
