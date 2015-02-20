@@ -60,7 +60,7 @@ public class SettingsDialog extends JDialog
         front_3d.setActionCommand(FRONT3D);
         front.add(front_2d);
         front.add(front_3d);
-        b_front.add(new JLabel("Frontend:"));
+        b_front.add(new JLabel("Viewer:"));
         b_front.add(front_2d);
         b_front.add(front_3d);
         

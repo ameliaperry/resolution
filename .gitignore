@@ -1,7 +1,20 @@
+# binaries and environment
 bin/
-sandbox/
-*.swp
 resolution.jar
-refs/
-aux/
 *.zip
+
+# environment
+sandbox/
+refs/
+lib/
+
+# other code
+aux/
+
+# temporary vim files
+*.swp
+
+# publishing files
+stage/
+publish
+
