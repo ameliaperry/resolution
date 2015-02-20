@@ -8,6 +8,17 @@ public class SettingsDialog extends JDialog
 {
     public static final String FRONT2D = "front2d";
     public static final String FRONT3D = "front3d";
+//    public static final String BACKBRUNER = "backbruner";
+//    public static final String BACKQ0 = "backQ(0)";
+
+    public static final String ALGSTEEN = "Steenrod";
+    public static final String ALGA1 = "A(1)";
+    public static final String ALGA2 = "A(2)";
+    public static final String ALGAN = "A(n)";
+    public static final String ALGODD = "odd Steenrod p=2";
+    public static final String ALGMOT = "Steen motivic grading";
+    public static final String ALGCE = "Cartan-Eilenberg SS";
+
     public static final String MODSPHERE = "Sphere";
     public static final String MODBRUNER = "import bruner MDF";
     public static final String MODCOF2 = "cofib(2)";
@@ -16,21 +27,18 @@ public class SettingsDialog extends JDialog
     public static final String MODCOFSIGMA = "cofib(\u03c3)";
     public static final String MODA1 = "A(1)";
     public static final String MODEXCESS = "excess\u2264t";
-    public static final String BACKBRUNER = "backbruner";
-    public static final String BACKQ0 = "backQ(0)";
-//    public static final String BACKOLD = "backold";
 
     static final Integer[] PRIMES = new Integer[] { 2, 3, 5, 7, 11, 13 };
     static final String[] MODULES = new String[] { MODSPHERE, MODBRUNER, MODCOF2, MODCOFETA, MODCOFNU, MODCOFSIGMA, MODA1, MODEXCESS };
+    static final String[] ALGEBRAS = new String[] { ALGSTEEN, ALGA1, ALGA2, ALGAN, ALGODD, ALGMOT, ALGCE };
 
     /* XXX instead of publically exposing UI elements, should offer getters */
     public ButtonGroup front;
-    public ButtonGroup back;
+//    public ButtonGroup back;
 
     public JComboBox<Integer> prime;
+    public JComboBox<String> algcombo;
     public JComboBox<String> modcombo;
-    public JCheckBox oddrel;
-    public JCheckBox motivg;
     public JSpinner maxt;
     public JSpinner threads;
 
@@ -43,7 +51,7 @@ public class SettingsDialog extends JDialog
         getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 
         front = new ButtonGroup();
-        back = new ButtonGroup();
+//        back = new ButtonGroup();
 
         Box b_front = Box.createHorizontalBox();
         JRadioButton front_2d = new JRadioButton("2D", true);
@@ -55,6 +63,11 @@ public class SettingsDialog extends JDialog
         b_front.add(new JLabel("Frontend:"));
         b_front.add(front_2d);
         b_front.add(front_3d);
+        
+        Box b_alg = Box.createHorizontalBox();
+        algcombo = new JComboBox<String>(ALGEBRAS);
+        b_alg.add(new JLabel("Algebra:"));
+        b_alg.add(algcombo);
 
         Box b_mod = Box.createHorizontalBox();
         modcombo = new JComboBox<String>(MODULES);
@@ -66,20 +79,13 @@ public class SettingsDialog extends JDialog
         b_prime.add(new JLabel("Prime:"));
         b_prime.add(prime);
 
-        Box b_oddrel = Box.createHorizontalBox();
-        oddrel = new JCheckBox("Odd relations for p=2:", Config.MICHAEL_MODE);
-        b_oddrel.add(oddrel);
-        
-        Box b_motivg = Box.createHorizontalBox();
-        motivg = new JCheckBox("Use motivic grading:", Config.MOTIVIC_GRADING);
-        b_motivg.add(motivg);
-
         Box b_maxt = Box.createHorizontalBox();
         maxt = new JSpinner(new SpinnerNumberModel(Config.T_CAP, 1, 10000, 1));
         b_maxt.add(new JLabel("Max t:"));
         b_maxt.add(maxt);
         b_maxt.add(Box.createHorizontalGlue());
 
+        /*
         Box b_back = Box.createHorizontalBox();
         JRadioButton back_bruner = new JRadioButton("bruner", true);
         JRadioButton back_q0 = new JRadioButton("Q(0)");
@@ -90,6 +96,7 @@ public class SettingsDialog extends JDialog
         b_back.add(new JLabel("Backend:"));
         b_back.add(back_bruner);
         b_back.add(back_q0);
+        */
         
         Box b_threads = Box.createHorizontalBox();
         threads = new JSpinner(new SpinnerNumberModel(Config.THREADS, 1, 10000, 1));
@@ -114,12 +121,11 @@ public class SettingsDialog extends JDialog
         b_ok.add(cancel);
 
         getContentPane().add(b_front);
+        getContentPane().add(b_alg);
         getContentPane().add(b_mod);
         getContentPane().add(b_prime);
-        getContentPane().add(b_oddrel);
-        getContentPane().add(b_motivg);
         getContentPane().add(b_maxt);
-        getContentPane().add(b_back);
+//        getContentPane().add(b_back);
         getContentPane().add(b_threads);
         getContentPane().add(b_ok);
 

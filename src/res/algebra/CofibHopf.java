@@ -8,7 +8,7 @@ public class CofibHopf extends GradedModule<Sq>
     private int i;
     private Dot<Sq> d1, d2;
 
-    public CofibHopf(int i, GradedAlgebra<Sq> alg)
+    public CofibHopf(int i)
     {
         this.i = i;
         /* XXX should follow the number of extra gradings on alg */

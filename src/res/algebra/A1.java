@@ -27,7 +27,7 @@ public class A1 extends GradedModule<Sq>
     private Dot<Sq> d7 = new Dot<Sq>(g,sq5sq1);
     private ArrayList<Dot<Sq>> deg3 = new ArrayList<Dot<Sq>>();
 
-    public A1(GradedAlgebra<Sq> alg) {
+    public A1() {
         deg3.add(d3);
         deg3.add(d4);
     }

@@ -21,10 +21,11 @@ public class Main {
         }
     }
 
+    static SettingsDialog sd;
     public static void main(String[] args)
     {
         String s;
-        SettingsDialog sd = new SettingsDialog();
+        sd = new SettingsDialog();
         sd.setVisible(true); /* blocks until dialog has completed */
 
         if(sd.cancelled)
@@ -35,38 +36,34 @@ public class Main {
         Config.Q = 2 * (Config.P - 1);
         ResMath.calcInverses();
 
-        /* p=2 mode */
-        Config.MICHAEL_MODE = sd.oddrel.isSelected();
-        
-        /* motivic grading */
-        Config.MOTIVIC_GRADING = sd.motivg.isSelected();
-
         /* T cap */
         Config.T_CAP = (Integer) sd.maxt.getValue();
 
         /* threads */
         Config.THREADS = (Integer) sd.threads.getValue();
 
-        /* at some point we'll have to think about how to do this process in a properly generic way */
-
-        /* algebra */
-        GradedAlgebra<Sq> alg = new SteenrodAlgebra();
+        /* intervene for the Cartan-Eilenberg option */
+        if(sd.algcombo.getSelectedItem() == SettingsDialog.ALGCE) {
+            startCE();
+            return;
+        }
 
         /* module */
-        GradedModule<Sq> mod;
+        GradedAlgebra<Sq> steen = null;
+        GradedModule<Sq> sqmod;
         s = (String) sd.modcombo.getSelectedItem();
         if(s == SettingsDialog.MODBRUNER)
-            mod = new BrunerNotationModule(alg);
+            sqmod = new BrunerNotationModule();
         else if(s == SettingsDialog.MODCOF2)
-            mod = new CofibHopf(0,alg);
+            sqmod = new CofibHopf(0);
         else if(s == SettingsDialog.MODCOFETA)
-            mod = new CofibHopf(1,alg);
+            sqmod = new CofibHopf(1);
         else if(s == SettingsDialog.MODCOFNU)
-            mod = new CofibHopf(2,alg);
+            sqmod = new CofibHopf(2);
         else if(s == SettingsDialog.MODCOFSIGMA)
-            mod = new CofibHopf(3,alg);
+            sqmod = new CofibHopf(3);
         else if(s == SettingsDialog.MODA1)
-            mod = new A1(alg);
+            sqmod = new A1();
         else if(s == SettingsDialog.MODEXCESS) {
             int exct = -1;
             while(exct < 0) {
@@ -75,28 +72,76 @@ public class Main {
                     exct = Integer.parseInt(excstr);
                 } catch(NumberFormatException e) {}
             }
-            mod = new ExcessModule(exct,alg);
+            steen = new SteenrodAlgebra();
+            sqmod = new ExcessModule(exct,steen);
         } else
-            mod = new Sphere<Sq>(alg);
+            sqmod = new Sphere<Sq>(Sq.UNIT);
 
+
+        /* algebra */
+        s = (String) sd.algcombo.getSelectedItem();
+        Config.MICHAEL_MODE = (s == SettingsDialog.ALGODD);
+        Config.MOTIVIC_GRADING = (s == SettingsDialog.ALGMOT);
+        if(s == SettingsDialog.ALGSTEEN || s == SettingsDialog.ALGODD || s == SettingsDialog.ALGMOT) { // steenrod
+
+            if(steen == null)
+                steen = new SteenrodAlgebra();
+
+            startBruner(steen, sqmod);
+
+        } else { // A(n)
+
+            int N = -1;
+            if(s == SettingsDialog.ALGA1) N = 1;
+            else if(s == SettingsDialog.ALGA2) N = 2;
+            else if(s == SettingsDialog.ALGAN) {
+                while(N < 0) {
+                    String nstr = JOptionPane.showInputDialog(null, "Ext over A(n) for what n?");
+                    try {
+                        N = Integer.parseInt(nstr);
+                    } catch(NumberFormatException e) {}
+                    if(N > 20) N = -1; // huge inputs will break due to overflow
+                }
+            }
+
+            AnAlgebra analg = new AnAlgebra(N);
+            GradedModule<AnElement> anmod = new AnModuleWrapper(sqmod);
+
+            startBruner(analg, anmod);
+        }
+
+
+    }
+
+    static <T extends GradedElement<T>> void startBruner(GradedAlgebra<T> alg, GradedModule<T> mod)
+    {
         /* backend */
-        s = sd.back.getSelection().getActionCommand();
-        Backend<Generator<Sq>, ? extends MultigradedVectorSpace<Generator<Sq>>> back = null;
-        if(s == SettingsDialog.BACKBRUNER) {
-            BrunerBackend<Sq> brunerback = new BrunerBackend<Sq>(alg);
-            brunerback.setModule(mod);
-            back = brunerback;
-        } else if(s == SettingsDialog.BACKQ0)
-            back = new CotorLiftingBackend();
-        Decorated<Generator<Sq>, ? extends MultigradedVectorSpace<Generator<Sq>>> dec = back.getDecorated();
+        BrunerBackend<T> back = new BrunerBackend<T>(alg);
+        back.setModule(mod);
+        Decorated<Generator<T>, ? extends MultigradedVectorSpace<Generator<T>>> dec = back.getDecorated();
 
         /* frontend */
-        s = sd.front.getSelection().getActionCommand();
+        String s = sd.front.getSelection().getActionCommand();
         if(s == SettingsDialog.FRONT3D)
             ResDisplay3D.constructFrontend(dec);
         else
             ResDisplay.constructFrontend(dec);
 
+        /* off we go */
+        back.start();
+    }
+
+    static void startCE()
+    {
+        CotorLiftingBackend back = new CotorLiftingBackend();
+        Decorated<Generator<Sq>, ? extends MultigradedVectorSpace<Generator<Sq>>> dec = back.getDecorated();
+
+        /* frontend */
+        String s = sd.front.getSelection().getActionCommand();
+        if(s == SettingsDialog.FRONT3D)
+            ResDisplay3D.constructFrontend(dec);
+        else
+            ResDisplay.constructFrontend(dec);
 
         /* off we go */
         back.start();

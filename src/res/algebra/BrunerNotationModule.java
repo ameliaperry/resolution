@@ -28,7 +28,7 @@ public class BrunerNotationModule extends GradedModule<Sq>
     }
 
 
-    public BrunerNotationModule(GradedAlgebra<Sq> alg)
+    public BrunerNotationModule()
     {
         /* XXX issues with extra gradings -- follow alg? */
         JFileChooser jfc = new JFileChooser();

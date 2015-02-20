@@ -8,12 +8,12 @@ public class Sphere<T extends GradedElement<T>> extends GradedModule<T>
     private Dot<T> d;
     T unit;
 
-    public Sphere(GradedAlgebra<T> alg)
+    public Sphere(T unit)
     {
+        this.unit = unit;
         /* XXX should follow the number of extra gradings on alg */
         Generator<T> g = new Generator<T>(new int[] {-1,0,0}, 0);
-        unit = alg.unit();
-        d = new Dot<T>(g, alg.unit());
+        d = new Dot<T>(g, unit);
     }
 
     @Override public Iterable<Dot<T>> basis(int deg) {

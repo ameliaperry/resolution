@@ -23,7 +23,7 @@ public class BrunerBackend<T extends GradedElement<T>>
 
     public BrunerBackend(GradedAlgebra<T> alg) {
         this.alg = alg;
-        module = new Sphere<T>(alg);
+        module = new Sphere<T>(alg.unit());
     }
 
 
