@@ -18,7 +18,7 @@ Output takes the form of a scrollable chart, with products by the first three Ho
 
 Running the program requires only the file `resolution.jar`, available at 
 
-http://willperry.me/downloads/resolution-latest.zip
+http://willperry.me/downloads/resolution-latest.jar
 
 For trigraded computations in the 2D viewer, there are controls to limit the visible range for the third grading; these are also jointly controlled by the PgUp and PgDn keys on your keyboard, in case you want to quickly step through cross-sections.
 
