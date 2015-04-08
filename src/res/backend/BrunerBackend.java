@@ -57,6 +57,13 @@ public class BrunerBackend<T extends GradedElement<T>>
         BrunerCellData<T> dat = dat(i[0], i[1]);
         return (dat != null && dat.gens != null);
     }
+    private boolean isKerComputed(int[] i)
+    {
+        if(i.length < 2) return false;
+        if(i[0] < 0 || i[1] < 0) return true;
+        BrunerCellData<T> dat = dat(i[0], i[1]);
+        return (dat != null);
+    }
 
     @Override public boolean isVanishing(int[] i)
     {
@@ -115,6 +122,10 @@ public class BrunerBackend<T extends GradedElement<T>>
     {
         return isComputed(new int[] {s,t});
     }
+    private boolean isKerComputed(int s, int t)
+    {
+        return isKerComputed(new int[] {s,t});
+    }
     private void putOutput(int s, int t, BrunerCellData<T> dat)
     {
         synchronized(output) {
@@ -158,10 +169,13 @@ public class BrunerBackend<T extends GradedElement<T>>
     {
         int[] key = new int[] {s,t};
         synchronized(claims) {
-            if(claims.contains(key))
+            if(claims.contains(key)) {
+                System.out.println("failed to claim "+s+","+t);
                 return false;
+            }
             claims.add(key);
         }
+        System.out.println("Claimed "+s+","+t);
         return true;
     }
     
@@ -330,7 +344,7 @@ public class BrunerBackend<T extends GradedElement<T>>
         }
 
         /* kick off the second task */
-        if(isComputed(s-1, t+1))
+        if(isKerComputed(s-1, t+1))
             if(atomic_claim_grid(s,t+1))
                 putTask(new BrunerResTask(BrunerResTask.COMPUTE, s, t+1)); /* move right */
     }
