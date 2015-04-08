@@ -1,5 +1,6 @@
 package res.algebra;
 
+import res.*;
 import java.util.Map;
 
 /* to work around generic array restrictions */
@@ -37,8 +38,10 @@ public class DModSet<T extends GradedElement<T>> extends ModSet<Dot<T>>
     public DModSet<T> dscaled(int scale)
     {
         DModSet<T> ret = new DModSet<T>();
+        if(ResMath.dmod(scale) == 0)
+            return ret; // scaling by 0
         for(Map.Entry<Dot<T>,Integer> e1 : entrySet())
-            ret.put(e1.getKey(), e1.getValue() * scale);
+            ret.put(e1.getKey(), ResMath.dmod(e1.getValue() * scale));
         return ret;
 
     }

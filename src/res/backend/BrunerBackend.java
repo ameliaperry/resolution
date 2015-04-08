@@ -274,7 +274,8 @@ public class BrunerBackend<T extends GradedElement<T>>
                 DModSet<T> moddx = list_dx.get(d);
                 if(moddx == null)
                     break;
-                k.add(moddx, -coeff);
+                int ocoeff = moddx.get(d);
+                k.add(moddx, -coeff * ResMath.inverse[ocoeff]);
             }
             if(Config.DEBUG) System.out.printf("reduces to %s\n", k);
 
