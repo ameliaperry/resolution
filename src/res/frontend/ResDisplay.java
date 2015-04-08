@@ -10,11 +10,11 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
-public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implements PingListener, MouseMotionListener, MouseListener
+public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implements PingListener, MouseMotionListener, MouseListener, MouseWheelListener
 {
     final static int DEFAULT_MINFILT = 0;
     final static int DEFAULT_MAXFILT = 100;
-    final static int BLOCK_WIDTH = 30;
+    int BLOCK_WIDTH = 30;
 
     Decorated<U, ? extends MultigradedVectorSpace<U>> dec;
     MultigradedVectorSpace<U> under;
@@ -24,6 +24,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
     int viewx = 45;
     int viewy = -45;
+    int zoom = 0;
     int selx = -1;
     int sely = -1;
     int mx = -1;
@@ -36,6 +37,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         setBackend(dec);
         addMouseListener(this);
         addMouseMotionListener(this);
+        addMouseWheelListener(this);
     }
 
     public void setBackend(Decorated<U, ? extends MultigradedVectorSpace<U>> dec)
@@ -124,15 +126,17 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         }
 
         /* draw grid */
+        int zoomscale = 5;
+        for(int i = -zoom; i > 0; i -= 10) zoomscale *= 2;
         for(int x = 0; x <= max_visible; x++) {
             g.setColor(Color.lightGray);
             g.drawLine(getcx(x)-BLOCK_WIDTH/2, getcy(0)+BLOCK_WIDTH/2, getcx(x)-BLOCK_WIDTH/2, 0);
             g.drawLine(getcx(0)-BLOCK_WIDTH/2, getcy(x)+BLOCK_WIDTH/2, getWidth(), getcy(x)+BLOCK_WIDTH/2);
 
-            if(x % 5 == 0) {
+            if(x % zoomscale == 0) {
                 g.setColor(Color.black);
-                g.drawString(String.valueOf(x), getcx(x)-8, getcy(-1)+5);
-                g.drawString(String.valueOf(x), getcx(-1)-8, getcy(x)+5);
+                g.drawString(String.valueOf(x), getcx(x)-8, getcy(0)+(18*BLOCK_WIDTH/30)+17);
+                g.drawString(String.valueOf(x), getcx(0)-(19*BLOCK_WIDTH/30)-19, getcy(x)+5);
             }
         }
 
@@ -208,7 +212,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         g.drawLine(MARGIN_WID, 0, MARGIN_WID, bmy);
         g.drawLine(MARGIN_WID, bmy, getWidth(), bmy);
         g.setColor(Color.black);
-        for(int x = 0; x <= max_visible; x += 5) {
+        for(int x = 0; x <= max_visible; x += zoomscale) {
             g.drawString(String.valueOf(x), getcx(x)-8, getHeight()-10);
             g.drawString(String.valueOf(x), 10, getcy(x)+5);
         }
@@ -273,6 +277,13 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         viewx += dx;
         viewy += dy;
 
+        repaint();
+    }
+
+    @Override public void mouseWheelMoved(MouseWheelEvent evt)
+    {
+        zoom -= evt.getWheelRotation();
+        BLOCK_WIDTH = 1 + (int) (29.0 * Math.pow(1.1,zoom));
         repaint();
     }
 
