@@ -17,6 +17,7 @@ public class Main {
             System.err.println(fail);
             Thread.dumpStack();
             System.err.println("Failing.");
+            JOptionPane.showMessageDialog(null, fail);
             System.exit(1);
         }
     }
