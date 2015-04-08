@@ -16,9 +16,8 @@ public class ModSet<T> extends TreeMap<T,Integer>
 
     public void add(T d, int mult)
     {
-        int c;
-        if(containsKey(d)) c = get(d);
-        else c = 0;
+        Integer got = get(d);
+        int c = (got == null) ? 0 : got;
 
         c = ResMath.dmod(c + mult);
 
@@ -30,6 +29,7 @@ public class ModSet<T> extends TreeMap<T,Integer>
 
     public void add(ModSet<T> d, int mult)
     {
+        if(ResMath.dmod(mult) == 0) return;
         for(Map.Entry<T,Integer> e : d.entrySet())
             add(e.getKey(), e.getValue() * mult);
     }
