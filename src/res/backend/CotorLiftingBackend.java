@@ -29,7 +29,9 @@ public class CotorLiftingBackend
     int postw = -1;
 
 
-    public CotorLiftingBackend() { }
+    public CotorLiftingBackend() {
+        Main.die_if(Config.P != 2, "Cartan-Eilenberg SS only implemented for p=2");
+    }
 
 
     /* methods implementing MultigradedAlgebra */
