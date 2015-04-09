@@ -6,13 +6,13 @@ import java.util.*;
 public class A1 extends GradedModule<Sq>
 {
     private Generator<Sq> g = new Generator<Sq>(new int[] {-1,0,0}, 0);
-    private static Sq sq0 = new Sq(new int[] {0});
-    private static Sq sq1 = new Sq(new int[] {1});
-    private static Sq sq2 = new Sq(new int[] {2});
-    private static Sq sq3 = new Sq(new int[] {3});
-    private static Sq sq4 = new Sq(new int[] {4});
-    private static Sq sq5 = new Sq(new int[] {5});
-    private static Sq sq6 = new Sq(new int[] {6});
+    private static Sq sq0 = new Sq(0);
+    private static Sq sq1 = new Sq(1);
+    private static Sq sq2 = new Sq(2);
+    private static Sq sq3 = new Sq(3);
+    private static Sq sq4 = new Sq(4);
+    private static Sq sq5 = new Sq(5);
+    private static Sq sq6 = new Sq(6);
     private static Sq sq2sq1 = new Sq(new int[] {2,1});
     private static Sq sq3sq1 = new Sq(new int[] {3,1});
     private static Sq sq4sq1 = new Sq(new int[] {4,1});

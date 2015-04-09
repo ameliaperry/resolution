@@ -7,10 +7,10 @@ public class Sq implements GradedElement<Sq>
 {
     public static final Sq UNIT = new Sq(new int[] {});
     public static final Sq[] HOPF = new Sq[] {
-        new Sq(new int[] {1}),
-        new Sq(new int[] {Config.Q}),
-        new Sq(new int[] {Config.P*Config.Q}),
-        new Sq(new int[] {Config.P*Config.P*Config.Q})
+        new Sq(1),
+        new Sq(Config.Q),
+        new Sq(Config.P*Config.Q),
+        new Sq(Config.P*Config.P*Config.Q)
     };
 
 
@@ -20,6 +20,7 @@ public class Sq implements GradedElement<Sq>
 
 
     public Sq(int[] qq) { q = qq; }
+    public Sq(int qq) { q = new int[] {qq}; }
     
     private static final int[] EMPTY = new int[] {};
     private static final int[] ZERO = new int[] {0};

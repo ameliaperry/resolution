@@ -15,7 +15,7 @@ public class AnAlgebra implements GradedAlgebra<AnElement>
         hopf.add(new AnElement(new ModSet<Sq>(Sq.HOPF[0]),1));
         int pow = Config.Q;
         for(int i = 1; i <= N; i++) {
-            Sq sq = new Sq(new int[] {pow});
+            Sq sq = new Sq(pow);
             AnElement elt = new AnElement(new ModSet<Sq>(sq), pow);
             hopf.add(elt);
             pow *= Config.P;

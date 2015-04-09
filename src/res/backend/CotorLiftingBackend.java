@@ -620,7 +620,7 @@ public class CotorLiftingBackend
         if(q.q.length == 1) { /* cartan rule */
             ret.add(new Sq[] { Sq.UNIT, q }, 1);
             for(int i = 1; i < q.q[0]; i++)
-                ret.add(new Sq[] { new Sq(new int[] {i}), new Sq(new int[] {q.q[0]-i}) }, 1);
+                ret.add(new Sq[] { new Sq(i), new Sq(q.q[0]-i) }, 1);
             ret.add(new Sq[] { q, Sq.UNIT }, 1);
             diagonal_cache.put(q,ret);
             return ret;
@@ -628,7 +628,7 @@ public class CotorLiftingBackend
 
         /* general case: recurse by multiplication */
         Sq a = new Sq(Arrays.copyOf(q.q, q.q.length-1));
-        Sq b = new Sq(new int[] { q.q[q.q.length-1] });
+        Sq b = new Sq(q.q[q.q.length-1]);
         ModSet<Sq[]> da = diagonal(a);
         ModSet<Sq[]> db = diagonal(b);
 

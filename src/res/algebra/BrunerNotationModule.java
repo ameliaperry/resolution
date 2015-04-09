@@ -133,7 +133,7 @@ public class BrunerNotationModule extends GradedModule<Sq>
             int[] sqcopy = new int[sq.q.length-1];
             for(int i = 0; i < sq.q.length-1; i++) sqcopy[i] = sq.q[i];
             Sq next = new Sq(sqcopy);
-            Sq curr = new Sq(new int[] {sq.q[sq.q.length-1]});
+            Sq curr = new Sq(sq.q[sq.q.length-1]);
             return act(o, curr).times(next,this);
         }
     }
