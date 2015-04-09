@@ -56,9 +56,9 @@ public class Sq implements GradedElement<Sq>
     public int excess()
     {
         if(q.length == 0) return 0;
-        int exc = q[0];
+        int exc = q[q.length-1];
         for(int i = 1; i < q.length; i++)
-            exc -= q[i];
+            exc += q[i-1] - Config.P * q[i];
         return exc;
     }
 
