@@ -4,7 +4,7 @@ public class Config
 {
     /* configurable from settings dialog; these set defaults */
     public static int P = 2;
-    public static int THREADS = 1;
+    public static int THREADS = Runtime.getRuntime().availableProcessors() + 1;
     public static int T_CAP = 100;
     public static boolean MICHAEL_MODE = false;
     public static boolean MOTIVIC_GRADING = false;
