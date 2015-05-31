@@ -55,3 +55,7 @@ for any odd p.
 This repository includes shell scripts `make` for compiling, `run` for running, and `prof` for profiling. Currently they're a bit specialized to my machine, in particular referring to a Java 6 runtime `rt.jar` in a subfolder, but it shouldn't be too hard to get it built if you're into Java. Feel free to contact me.
 
 
+# Acknowledgements
+
+Most of the features in this program were developed during a period of collaboration with Michael Andrews, and so he has guided its direction to a large extent. Thanks also to Mark Behrens for feature suggestions.
+
