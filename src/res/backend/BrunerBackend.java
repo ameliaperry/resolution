@@ -14,6 +14,8 @@ public class BrunerBackend<T extends GradedElement<T>>
     extends MultigradedAlgebra<Generator<T>>
     implements Backend<Generator<T>, MultigradedAlgebra<Generator<T>>>
 {
+
+
     private final GradedAlgebra<T> alg;
     private GradedModule<T> module;
 
@@ -50,31 +52,29 @@ public class BrunerBackend<T extends GradedElement<T>>
         } else return null;
     }
 
-    @Override public boolean isComputed(int[] i)
+    @Override public int getState(int[] i)
     {
-        if(i.length < 2) return false;
-        if(i[0] < 0 || i[1] < 0) return true;
+        if(i.length < 2) return STATE_VANISHES;
+        for(int j = 0; j < i.length; j++)
+            if(i[j] < 0) return STATE_VANISHES;
+        if(i[1] < i[0]) return STATE_VANISHES;
+        
+        /* XXX this is just for the Steenrod. query the underlying GradedAlgebra? */
+        if(i.length >= 3 && i[2] > i[0]) return STATE_VANISHES; 
+
         BrunerCellData<T> dat = dat(i[0], i[1]);
-        return (dat != null && dat.gens != null);
+        if(dat != null && dat.gens != null) return STATE_DONE;
+        if(claims != null && claims.contains(new int[] {i[0],i[1]})) return STATE_STARTED;
+        return STATE_NOT_COMPUTED;
     }
+
+
     private boolean isKerComputed(int[] i)
     {
         if(i.length < 2) return false;
         if(i[0] < 0 || i[1] < 0) return true;
         BrunerCellData<T> dat = dat(i[0], i[1]);
         return (dat != null);
-    }
-
-    @Override public boolean isVanishing(int[] i)
-    {
-        if(i.length < 2) return true;
-        for(int j = 0; j < i.length; j++) {
-            if(i[j] < 0) return true;
-        }
-        if(i[1] < i[0]) return true;
-        if(i.length >= 3 && i[2] > i[0]) /* XXX hack this is just for the Steenrod. should query the GradedAlgebra */
-            return true;
-        return false;
     }
 
     @Override public ModSet<Generator<T>> times(Generator<T> a, Generator<T> b)
@@ -120,7 +120,7 @@ public class BrunerBackend<T extends GradedElement<T>>
     }
     private boolean isComputed(int s, int t)
     {
-        return isComputed(new int[] {s,t});
+        return getState(new int[] {s,t}) == STATE_DONE;
     }
     private boolean isKerComputed(int s, int t)
     {
@@ -170,12 +170,12 @@ public class BrunerBackend<T extends GradedElement<T>>
         int[] key = new int[] {s,t};
         synchronized(claims) {
             if(claims.contains(key)) {
-                System.out.println("failed to claim "+s+","+t);
+                //System.out.println("failed to claim "+s+","+t);
                 return false;
             }
             claims.add(key);
         }
-        System.out.println("Claimed "+s+","+t);
+        //System.out.println("Claimed "+s+","+t);
         return true;
     }
     
@@ -362,14 +362,32 @@ public class BrunerBackend<T extends GradedElement<T>>
     {
         CompoundDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>> dec = new CompoundDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>>(this);
 
-        Collection<DifferentialRule> diffrules = new ArrayList<DifferentialRule>();
+//        Collection<DifferentialRule> diffrules = new ArrayList<DifferentialRule>();
 //        diffrules.add(new DifferentialRule(new int[] {2,1,1}, new int[] {1,1,0}, Color.green));
 //        diffrules.add(new DifferentialRule(new int[] {1,0,2}, new int[] {0,0,1}, Color.red));
-        dec.add(new DifferentialDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>>(this, diffrules));
+//        dec.add(new DifferentialDecorated<Generator<T>,MultigradedAlgebra<Generator<T>>>(this, diffrules));
 
-        Collection<ProductRule> prodrules = new ArrayList<ProductRule>();
-        Color[] colors = new Color[] { new Color(128,0,0), new Color(0,128,0), new Color(0,0,128) };
+        /* // RGB
+        Color[] colors = new Color[] {
+            new Color(128,0,0),
+            new Color(0,128,0),
+            new Color(0,0,128)
+        }; */
+        /* // fading
+        Color[] colors = new Color[] {
+            new Color(0,0,0),
+            new Color(0,0,0),
+            new Color(96,96,96),
+            new Color(192,192,192)
+        };*/
+        // black
+        Color[] colors = new Color[] {
+            new Color(0,0,0),
+            new Color(0,0,0),
+            new Color(0,0,0),
+        };
         List<T> distinguished = alg.distinguished();
+        Collection<ProductRule> prodrules = new ArrayList<ProductRule>();
         for(int i = 0; i < colors.length && i < distinguished.size(); i++)
             prodrules.add(new ProductRule("h_"+i, distinguished.get(i), true, false, false, colors[i]));
         dec.add(new ProductDecorated<T,MultigradedAlgebra<Generator<T>>>(this, prodrules));

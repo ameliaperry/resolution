@@ -61,27 +61,28 @@ public class CotorLiftingBackend
         return null;
     }
 
-    @Override public boolean isComputed(int[] i)
-    {
-        if(i.length == 2) {
-            if(i[0] < 0 || i[1] < 0) return true;
-            return output2.containsKey(i);
-        }
-        if(i.length == 3) {
-            if(i[0] < 0 || i[1] < 0 || i[2] < 0) return true;
-            return output3.containsKey(i);
-        }
-        return false;
-    }
 
-    @Override public boolean isVanishing(int[] i)
+    @Override public int getState(int[] i)
     {
         if(i.length == 2) {
-            return (i[0] < 0 || i[1] < i[0]);
-        } else if(i.length == 3) {
-            /* XXX can do better than this */
-            return (i[0] < 0 || i[1] < 0 || i[2] < 0);
-        } else return true;
+            if(i[0] < 0 || i[1] < i[0])
+               return STATE_VANISHES; 
+            /* XXX currently no way to tell if a cell is partial or done. */
+            if(output2.containsKey(i))
+                return STATE_DONE;
+            return STATE_NOT_COMPUTED;
+        }
+
+        if(i.length == 3) {
+            if(i[0] < 0 || i[1] < i[0] || i[2] < 0)
+                return STATE_VANISHES;
+            /* XXX can do *much* better than this for vanishing */
+            if(output3.containsKey(i))
+                return STATE_DONE;
+            return STATE_NOT_COMPUTED;
+        }
+
+        return STATE_VANISHES;
     }
 
 
@@ -101,7 +102,7 @@ public class CotorLiftingBackend
     }
     private boolean isComputed(int s, int t, int w)
     {
-        return isComputed(new int[] {s,t,w});
+        return getState(new int[] {s,t,w}) == STATE_DONE;
     }
     private Map<Dot<Sq>,DModSet<Sq>> resmap(int s, int t, int w)
     {

@@ -117,14 +117,6 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         int max_y_visible = gety(-3*BLOCK_WIDTH);
         int max_visible = (max_x_visible < max_y_visible) ? max_y_visible : max_x_visible;
 
-        /* draw selection */
-        if(selx >= 0 && sely >= 0) {
-            g.setColor(Color.orange);
-            int cx = getcx(selx);
-            int cy = getcy(sely);
-            g.fillRect(cx - BLOCK_WIDTH/2, cy - BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
-        }
-
         /* draw grid */
         int zoomscale = 5;
         for(int i = -zoom; i > 0; i -= 10) zoomscale *= 2;
@@ -144,14 +136,33 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         /* assign dots a location; at this point we definitively decide what's visible */
         Set<U> frameVisibles = new TreeSet<U>();
         TreeMap<U,int[]> pos = new TreeMap<U,int[]>();
-        g.setColor(Color.black);
         for(int x = min_x_visible; x <= max_x_visible; x++) {
             for(int y = min_y_visible; y <= max_y_visible; y++) {
                 int cx = getcx(x);
                 int cy = getcy(y);
-                if(!under.isComputed(multideg(x,y))) {
-                    g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
-                    continue;
+                switch(under.getState(multideg(x,y))) {
+                    case MultigradedVectorSpace.STATE_NOT_COMPUTED:
+                        g.setColor(Color.black);
+                        g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
+                        continue;
+                    case MultigradedVectorSpace.STATE_STARTED:
+                        g.setColor(Color.darkGray);
+                        g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
+                        continue;
+                    case MultigradedVectorSpace.STATE_PARTIAL:
+                        g.setColor(Color.yellow);
+                        g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
+                        break;
+                    case MultigradedVectorSpace.STATE_VANISHES:
+                        g.setColor(Color.lightGray);
+                        g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
+                        continue;
+                    default:
+                        break;
+                }
+                if(x == selx && y == sely) {
+                    g.setColor(Color.orange);
+                    g.fillRect(cx - BLOCK_WIDTH/2, cy - BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                 }
         
                 Collection<U> gens = under.gens(multideg(x,y));
@@ -197,8 +208,8 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         /* draw dots */
         g.setColor(Color.black);
 //        for(int[] p : pos.values()) {
-        for(U d : frameVisibles) {
-            int[] p = pos.get(d);
+        for(U u : frameVisibles) {
+            int[] p = pos.get(u);
             g.fillOval(p[0]-2, p[1]-2, 5, 5);
         }
 
@@ -219,6 +230,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
     }
 
+    @SuppressWarnings("fallthrough")
     void setSelected(int x, int y)
     {
         selx = x;
@@ -227,20 +239,31 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
         if(textarea == null) return;
 
-        if(! under.isComputed(multideg(x,y))) {
-            textarea.setText("Not yet computed.");
-            return;
+        String ret = "";
+        switch(under.getState(multideg(x,y))) {
+            case MultigradedVectorSpace.STATE_VANISHES:
+                ret = "This degree vanishes formally.";
+                break;
+            case MultigradedVectorSpace.STATE_NOT_COMPUTED:
+                ret = "This degree has not yet been computed.";
+                break;
+            case MultigradedVectorSpace.STATE_STARTED:
+                ret = "This degree is still being computed.";
+                break;
+            case MultigradedVectorSpace.STATE_PARTIAL:
+                ret = "This degree might not yet be complete.\n";
+                // case falls through
+            case MultigradedVectorSpace.STATE_DONE:
+            default:
+                ret += "Bidegree ("+x+","+y+")\n";
+                Collection<U> gens = under.gens(multideg(x,y));
+                for(U d : gens) if(isVisible(d)) {
+                    ret += "\n" + d.toString();
+                    ret += "\n" + d.extraInfo();
+                    ret += "\n";
+                }
         }
 
-        Collection<U> gens = under.gens(multideg(x,y));
-//        Arrays.sort(gens);
-
-        String ret = "Bidegree ("+x+","+y+")\n";
-        for(U d : gens) if(isVisible(d)) {
-            ret += "\n" + d.toString();
-            ret += "\n" + d.extraInfo();
-            ret += "\n";
-        }
         textarea.setText(ret);
     }
 
@@ -290,6 +313,9 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
     @Override public void ping(int[] deg)
     {
         repaint();
+        int[] s = multideg(selx, sely);
+        if(deg[0] == s[0] && deg[1] == s[1])
+            setSelected(selx,sely); // updates text
     }
 
     public static <U extends MultigradedElement<U>> void constructFrontend(Decorated<U, ? extends MultigradedVectorSpace<U>> back) 
