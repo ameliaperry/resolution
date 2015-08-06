@@ -17,6 +17,7 @@ public class ProductRule // "should" be ProductRule<U extends GradedElement<U>>
         this.lines = lines;
         this.hide = hide;
         this.towers = towers;
+        this.color = color;
     }
 }
 
