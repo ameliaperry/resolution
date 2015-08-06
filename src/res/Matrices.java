@@ -59,10 +59,9 @@ public class Matrices
     }
 
 
+    /* unused */
     public static void printMatrix(String name, int[][] mat)
     {
-        if(!Config.MATRIX_DEBUG) return;
-
         System.out.print(name + ":");
         if(mat.length == 0) {
             System.out.println(" <zero lines>");

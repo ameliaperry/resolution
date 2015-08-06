@@ -12,7 +12,6 @@ public class Config
     /* not configurable from settings dialog */
     public static final boolean DEBUG = false;
     public static final boolean DEBUG_THREADS = false;
-    public static final boolean MATRIX_DEBUG = false;
     public static final boolean STDOUT = false;
     public static final boolean TIMING = true;
 
