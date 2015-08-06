@@ -49,6 +49,12 @@ public class Main {
             return;
         }
 
+        /* intervene for the polynomial/exterior option */
+        if(sd.algcombo.getSelectedItem() == SettingsDialog.ALGPE) {
+            startPE();
+            return;
+        }
+
         /* module */
         GradedAlgebra<Sq> steen = null;
         GradedModule<Sq> sqmod;
@@ -143,6 +149,21 @@ public class Main {
             ResDisplay3D.constructFrontend(dec);
         else
             ResDisplay.constructFrontend(dec);
+
+        /* off we go */
+        back.start();
+    }
+    
+    static void startPE()
+    {
+        PolynomialExteriorBackend back = new PolynomialExteriorBackend();
+
+        /* frontend */
+        String s = sd.front.getSelection().getActionCommand();
+        if(s == SettingsDialog.FRONT3D)
+            ResDisplay3D.constructFrontend(back.getDecorated());
+        else
+            ResDisplay.constructFrontend(back.getDecorated());
 
         /* off we go */
         back.start();

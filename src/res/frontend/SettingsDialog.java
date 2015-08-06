@@ -8,8 +8,6 @@ public class SettingsDialog extends JDialog
 {
     public static final String FRONT2D = "front2d";
     public static final String FRONT3D = "front3d";
-//    public static final String BACKBRUNER = "backbruner";
-//    public static final String BACKQ0 = "backQ(0)";
 
     public static final String ALGSTEEN = "Steenrod";
     public static final String ALGA1 = "A(1)";
@@ -18,6 +16,7 @@ public class SettingsDialog extends JDialog
     public static final String ALGODD = "odd Steenrod p=2";
     public static final String ALGMOT = "Steen motivic grading";
     public static final String ALGCE = "Cartan-Eilenberg SS";
+    public static final String ALGPE = "Polynomial/exterior algebra";
 
     public static final String MODSPHERE = "Sphere";
     public static final String MODBRUNER = "import bruner MDF";
@@ -30,7 +29,7 @@ public class SettingsDialog extends JDialog
 
     static final Integer[] PRIMES = new Integer[] { 2, 3, 5, 7, 11, 13 };
     static final String[] MODULES = new String[] { MODSPHERE, MODBRUNER, MODCOF2, MODCOFETA, MODCOFNU, MODCOFSIGMA, MODA1, MODEXCESS };
-    static final String[] ALGEBRAS = new String[] { ALGSTEEN, ALGA1, ALGA2, ALGAN, ALGODD, ALGMOT, ALGCE };
+    static final String[] ALGEBRAS = new String[] { ALGSTEEN, ALGA1, ALGA2, ALGAN, ALGODD, ALGMOT, ALGCE, ALGPE };
 
     /* XXX instead of publically exposing UI elements, should offer getters */
     public ButtonGroup front;
