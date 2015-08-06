@@ -35,7 +35,7 @@ public final class ResMath
 
     public static int dmod(int n)
     {
-        return (n + (Config.P << 8)) % Config.P;
+        return (n + (Config.P << 16)) % Config.P;
     }
 
     public static int floorstep(int n, int m)
