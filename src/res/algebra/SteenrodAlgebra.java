@@ -33,6 +33,10 @@ public class SteenrodAlgebra implements GradedAlgebra<Sq>
         ret.add(Sq.HOPF[0]);
         ret.add(Sq.HOPF[1]);
         ret.add(Sq.HOPF[2]);
+        ret.add(Sq.HOPF[3]);
+        ret.add(Sq.HOPF[4]);
+        ret.add(Sq.HOPF[5]);
+        ret.add(Sq.HOPF[6]);
         return ret;
     }
 
