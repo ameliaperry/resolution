@@ -1,6 +1,7 @@
 package res.algebras;
 
 import res.*;
+import res.algebratypes.*;
 import java.util.*;
 
 public class Sq implements GradedElement<Sq>

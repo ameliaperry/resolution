@@ -1,6 +1,7 @@
 package res.algebras;
 
 import res.*;
+import res.algebratypes.*;
 import java.io.*;
 import java.util.*;
 import javax.swing.*;

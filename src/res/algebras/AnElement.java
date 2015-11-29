@@ -1,5 +1,7 @@
 package res.algebras;
 
+import res.algebratypes.*;
+
 public class AnElement extends AbstractGradedElement<AnElement>
 {
     static final int[] EGR = {};

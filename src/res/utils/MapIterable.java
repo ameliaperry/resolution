@@ -21,7 +21,7 @@ public final class MapIterable<T,U> extends Iterable<U>
             @Override public void remove() {
                 under.remove();
             }
-        }
+        };
     }
 }
 

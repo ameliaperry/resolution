@@ -1,6 +1,7 @@
 package res.algebras;
 
 import res.Config;
+import res.algebratypes.*;
 
 public class BCp extends GradedPolynomialExteriorAlgebra implements GradedModule<PEMonomial,Pair<PEMonomial,?>>
 {

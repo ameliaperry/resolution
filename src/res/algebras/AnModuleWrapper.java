@@ -1,6 +1,6 @@
 package res.algebras;
 
-import res.*;
+import res.algebratypes.*;
 import java.util.*;
 
 public class AnModuleWrapper extends GradedModule<Dot<AnElement>>

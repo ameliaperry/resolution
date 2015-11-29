@@ -1,5 +1,6 @@
 package res.algebras;
 
+import res.algebratypes.*;
 import res.utils.*;
 import java.util.*;
 

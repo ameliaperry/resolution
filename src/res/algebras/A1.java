@@ -1,6 +1,6 @@
 package res.algebras;
 
-import res.*;
+import res.algebratypes.*;
 import java.util.*;
 
 public class A1 extends AbstractGradedModule<Sq>

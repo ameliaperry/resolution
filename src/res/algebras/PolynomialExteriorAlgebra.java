@@ -1,7 +1,7 @@
-package res.backend;
+package res.algebras;
 
 import res.*;
-import res.algebra.*;
+import res.algebratypes.*;
 import res.transform.*;
 import java.awt.Color;
 import java.util.*;
@@ -17,11 +17,11 @@ public class PolynomialExteriorAlgebra extends AbstractMultigradedAlgebra<PEMono
 
     public PolynomialExteriorAlgebra(int[][] egens, String[] enames, int[][] pgens, String[] pnames)
     {
-        gens = new PEGenerator[egen.length + pgen.length);
+        gens = new PEGenerator[egen.length + pgen.length];
         int idx = 0;
         for(int i = 0; i < egens.length; i++) {
             PEGenerator g = new PEGenerator();
-            g.deg = egens[i]
+            g.deg = egens[i];
             for(int j : g.deg) g.totaldeg += j;
             g.name = enames[i];
             g.exterior = true;
@@ -30,7 +30,7 @@ public class PolynomialExteriorAlgebra extends AbstractMultigradedAlgebra<PEMono
         }
         for(int i = 0; i < pgens.length; i++) {
             PEGenerator g = new PEGenerator();
-            g.deg = pgens[i]
+            g.deg = pgens[i];
             for(int j : g.deg) g.totaldeg += j;
             g.name = pnames[i];
             g.exterior = false;
@@ -52,7 +52,7 @@ public class PolynomialExteriorAlgebra extends AbstractMultigradedAlgebra<PEMono
         ret = new TreeSet<PEMonomial>();
 
 gen_loop:
-        for(int g = 0; g : gens.length; g++) {
+        for(int g = 0; g < gens.length; g++) {
             int[] odeg = new int[deg.length];
             for(int i = 0; i < deg.length; i++) {
                 prev[i] = deg[i] - g.deg[i];

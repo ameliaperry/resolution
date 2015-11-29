@@ -28,7 +28,7 @@ public final class FilterIterable<T> extends Iterable<T>
             @Override public void remove() {
                 under.remove();
             }
-        }
+        };
     }
 }
 

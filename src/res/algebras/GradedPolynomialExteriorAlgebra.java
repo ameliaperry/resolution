@@ -1,5 +1,6 @@
 package res.algebras;
 
+import res.algebratypes.*;
 import java.util.Iterable;
 
 public class GradedPolynomialExteriorAlgebra extends PolynomialExteriorAlgebra implements GradedAlgebra<PEMonomial>

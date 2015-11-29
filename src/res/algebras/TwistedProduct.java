@@ -1,9 +1,10 @@
 package res.algebras;
 
 import res.*;
+import res.algebratypes.*;
 import java.util.*;
 
-public class TwistedProduct<T1 extends GradedElement<T1>, T2 extends GradedElement<T2>, A1 extends GradedAlgebra<T1>,GradedModule<T1,T2>, A2 extends GradedAlgebra<T2>,GradedCoalgebra<T2>> implements MultigradedAlgebra<Pair<T1,T2>>
+public class TwistedProduct<T1 extends GradedElement<T1>, T2 extends GradedElement<T2>, A1 extends GradedAlgebraWithAction<T1,T2>, A2 extends GradedBialgebra<T2>> implements MultigradedAlgebra<Pair<T1,T2>>
 {
     A1 alg1;
     A2 alg2;

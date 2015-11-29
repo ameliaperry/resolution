@@ -26,8 +26,6 @@ public abstract class MultigradedComputation<T>
     @Override public void ping(int[] i) {
         for(PingListener l : listeners)
             l.ping(i);
-        }
     }
-
 }
 
