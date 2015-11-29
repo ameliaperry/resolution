@@ -1,6 +1,6 @@
-package res.algebra;
+package res.algebratypes;
 
-public class Generator<T extends GradedElement<T>> implements MultigradedElement<Generator<T>>
+public class Generator<T> implements MultigradedElement<Generator<T>>
 {
     public DModSet<T> img;
 
@@ -46,3 +46,4 @@ public class Generator<T extends GradedElement<T>> implements MultigradedElement
         return ret;
     }
 }
+

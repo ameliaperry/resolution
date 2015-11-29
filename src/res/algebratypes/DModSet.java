@@ -1,10 +1,10 @@
-package res.algebra;
+package res.algebratypes;
 
 import res.*;
 import java.util.Map;
 
 /* to work around generic array restrictions */
-public class DModSet<T extends GradedElement<T>> extends ModSet<Dot<T>>
+public class DModSet<T> extends ModSet<Dot<T>>
 {
     public DModSet() {}
     public DModSet(Dot<T> d) {

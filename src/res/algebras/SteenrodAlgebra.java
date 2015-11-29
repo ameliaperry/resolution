@@ -1,20 +1,21 @@
-package res.algebra;
+package res.algebras;
 
-import res.*;
+import res.Config;
+import res.utils.*;
 import java.util.*;
 
 /* The Steenrod algebra. */
-public class SteenrodAlgebra implements GradedAlgebra<Sq>
+public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements Coalgebra<Sq>
 {
     public SteenrodAlgebra() {}
 
     @Override public Iterable<Sq> basis(int n)
     {
-        Collection<Sq> ret = new ArrayList<Sq>();
-        for(int[] q : part_p(n,n))
-            ret.add(new Sq(q));
-
-        return ret;
+        return new MapIterable<int[],Sq>(part_p(n,n), new Func<int[],Sq>() {
+            @Override Sq run(int[] q) {
+                return new Sq(q);
+            }
+        });
     }
 
     @Override public ModSet<Sq> times(Sq a, Sq b)
@@ -56,6 +57,7 @@ public class SteenrodAlgebra implements GradedAlgebra<Sq>
 
     /*
      * Returns all partitions of <n> into P-admissible sequences of largest entry at most <max>.
+     * TODO: make this really iterator-based instead of collection-based, to save memory
      */
     static Iterable<int[]> part_p(int n, int max)
     {
@@ -91,6 +93,52 @@ public class SteenrodAlgebra implements GradedAlgebra<Sq>
 
         part_cache.put(part_cache_key(n,max), ret);
 
+        return ret;
+    }
+    
+    
+    private static Map<Sq,ModSet<Sq[]>> diagonal_cache = new TreeMap<Sq,ModSet<Sq[]>>();
+    @Override public ModSet<Sq[]> diagonal(Sq q)
+    {
+        ModSet<Sq[]> ret = diagonal_cache.get(q);
+        if(ret != null) return ret;
+
+        ret = new ModSet<Sq[]>(sqArrayComparator);
+
+        if(q.q.length == 0) {
+            ret.add(new Sq[] { Sq.UNIT, Sq.UNIT }, 1);
+            diagonal_cache.put(q,ret);
+            return ret;
+        }
+
+        if(q.q.length == 1) { /* cartan rule */
+            ret.add(new Sq[] { Sq.UNIT, q }, 1);
+            for(int i = 1; i < q.q[0]; i++)
+                ret.add(new Sq[] { new Sq(i), new Sq(q.q[0]-i) }, 1);
+            ret.add(new Sq[] { q, Sq.UNIT }, 1);
+            diagonal_cache.put(q,ret);
+            return ret;
+        }
+
+        /* general case: recurse by multiplication */
+        Sq a = new Sq(Arrays.copyOf(q.q, q.q.length-1));
+        Sq b = new Sq(q.q[q.q.length-1]);
+        ModSet<Sq[]> da = diagonal(a);
+        ModSet<Sq[]> db = diagonal(b);
+
+        for(Entry<Sq[],Integer> ea : da.entrySet()) {
+            Sq[] sqa = ea.getKey();
+            for(Entry<Sq[],Integer> eb : db.entrySet()) {
+                Sq[] sqb = eb.getKey();
+                for(Entry<Sq,Integer> e0 : sqa[0].times(sqb[0]).entrySet()) {
+                    for(Entry<Sq,Integer> e1 : sqa[1].times(sqb[1]).entrySet()) {
+                        ret.add(new Sq[] { e0.getKey(), e1.getKey() }, ea.getValue() * eb.getValue() * e0.getValue() * e1.getValue());
+                    }
+                }
+            }
+        }
+
+        diagonal_cache.put(q,ret);
         return ret;
     }
 

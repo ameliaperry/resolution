@@ -1,16 +1,16 @@
-package res.algebra;
+package res.algebras;
 
 import res.*;
 import java.io.*;
 import java.util.*;
 import javax.swing.*;
 
-public class BrunerNotationModule extends GradedModule<Sq>
+public class BrunerNotationModule extends AbstractGradedModule<Dot<Sq>,Sq>
 {
     ArrayList<Dot<Sq>> dotsidx = new ArrayList<Dot<Sq>>();
     Map<Integer,ArrayList<Dot<Sq>>> dots = new TreeMap<Integer,ArrayList<Dot<Sq>>>();
 
-    Map<Dot<Sq>,Map<Integer,DModSet<Sq>>> actions = new TreeMap<Dot<Sq>,Map<Integer,DModSet<Sq>>>();
+    Map<Dot<Sq>,Map<Integer,ModSet<Dot<Sq>>>> actions = new TreeMap<Dot<Sq>,Map<Integer,ModSet<Dot<Sq>>>>();
 
     static <T> Collection<T> getRO(Map<Integer,ArrayList<T>> map, int i) {
         ArrayList<T> alist = map.get(i);
@@ -68,7 +68,7 @@ public class BrunerNotationModule extends GradedModule<Sq>
             Dot<Sq> d = new Dot<Sq>(g, Sq.UNIT);
             dotsidx.add(d);
             adots.add(d);
-            actions.put(d,new TreeMap<Integer,DModSet<Sq>>());
+            actions.put(d,new TreeMap<Integer,ModSet<Dot<Sq>>>());
         }
 
 
@@ -81,7 +81,7 @@ public class BrunerNotationModule extends GradedModule<Sq>
             int r = Integer.parseInt(toks[1]);
             int k = Integer.parseInt(toks[2]);
 
-            DModSet<Sq> set = new DModSet<Sq>();
+            ModSet<Dot<Sq>> set = new ModSet<Dot<Sq>>();
 
             if(Config.P == 2) {
                 if(toks.length != 3 + k) {
@@ -113,19 +113,19 @@ public class BrunerNotationModule extends GradedModule<Sq>
         return getRO(dots,deg);
     }
 
-    DModSet<Sq> zero = new DModSet<Sq>();
-    @Override public DModSet<Sq> act(Dot<Sq> o, Sq sq)
+    ModSet<Dot<Sq>> zero = new ModSet<Dot<Sq>>();
+    @Override public ModSet<Dot<Sq>> times(Dot<Sq> o, Sq sq)
     {
         if(sq.q.length == 0)
-            return new DModSet<Sq>(o);
+            return new ModSet<Dot<Sq>>(o);
         else if(sq.q.length == 1) {
 
-            Map<Integer,DModSet<Sq>> map = actions.get(o);
+            Map<Integer,ModSet<Dot<Sq>>> map = actions.get(o);
             if(map == null) {
                 System.err.println("Foreign dot detected in BrunerNotationModule");
                 System.exit(1);
             }
-            DModSet<Sq> ret = map.get(sq.q[0]);
+            ModSet<Dot<Sq>> ret = map.get(sq.q[0]);
             if(ret == null) return zero; // no defined action indicates zero
             else return ret;
 

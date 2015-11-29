@@ -1,8 +1,6 @@
-package res.algebra;
+package res.algebratypes;
 
-import java.util.*;
-
-public abstract class MultigradedVectorSpace<T extends MultigradedElement<T>> implements PingListener
+public abstract class MultigradedComputation<T>
 {
     public final static int STATE_NOT_COMPUTED = 0;
     public final static int STATE_STARTED = 1;
@@ -28,6 +26,8 @@ public abstract class MultigradedVectorSpace<T extends MultigradedElement<T>> im
     @Override public void ping(int[] i) {
         for(PingListener l : listeners)
             l.ping(i);
+        }
     }
+
 }
 

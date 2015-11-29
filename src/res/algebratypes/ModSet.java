@@ -1,4 +1,4 @@
-package res.algebra;
+package res.algebratypes;
 
 import res.*;
 import java.util.*;

@@ -1,9 +1,6 @@
-package res.algebra;
+package res.algebras;
 
-import res.*;
-import java.util.*;
-
-public class AnElement implements GradedElement<AnElement>
+public class AnElement extends AbstractGradedElement<AnElement>
 {
     static final int[] EGR = {};
     ModSet<Sq> modset;
@@ -21,9 +18,6 @@ public class AnElement implements GradedElement<AnElement>
 
     @Override public int deg() {
         return deg;
-    }
-    @Override public int[] extraGrading() {
-        return EGR;
     }
     @Override public int compareTo(AnElement o) {
         return idx - o.idx;

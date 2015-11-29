@@ -1,11 +1,11 @@
-package res.algebra;
+package res.algebras;
 
 import res.*;
 import java.util.*;
 
-public class AnModuleWrapper extends GradedModule<AnElement>
+public class AnModuleWrapper extends GradedModule<Dot<AnElement>>
 {
-    GradedModule<Sq> base;
+    GradedModule<Dot<Sq>> base;
 
     Map<Dot<Sq>,Dot<AnElement>> dmap = new TreeMap<Dot<Sq>,Dot<AnElement>>();
     Map<Dot<AnElement>,Dot<Sq>> rmap = new TreeMap<Dot<AnElement>,Dot<Sq>>();
@@ -23,14 +23,14 @@ public class AnModuleWrapper extends GradedModule<AnElement>
         return ret;
     }
 
-    @Override public DModSet<AnElement> act(Dot<AnElement> o, AnElement elt)
+    @Override public ModSet<Dot<AnElement>> act(Dot<AnElement> o, AnElement elt)
     {
         Dot<Sq> under = rmap.get(o);
-        DModSet<AnElement> ret = new DModSet<AnElement>();
+        ModSet<Dot<AnElement>> ret = new ModSet<Dot<AnElement>>();
 
         for(Map.Entry<Sq,Integer> sqe : elt.modset.entrySet()) {
 
-            DModSet<Sq> prod = base.act(under, sqe.getKey());
+            ModSet<Dot<Sq>> prod = base.act(under, sqe.getKey());
             for(Map.Entry<Dot<Sq>,Integer> de : prod.entrySet()) {
 
                 Dot<AnElement> w = wrap(de.getKey());
