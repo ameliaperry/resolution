@@ -1,4 +1,4 @@
-package res.algebra;
+package res.algebratypes;
 
 public interface Stringifier<T>
 {

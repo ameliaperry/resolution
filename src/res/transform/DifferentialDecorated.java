@@ -1,11 +1,12 @@
 package res.transform;
 
-import res.algebra.*;
+import res.algebratypes.*;
 import java.util.*;
 
-/* TODO be clever and use the Leibniz rule */
-/* TODO use user information about known differentials */
-public class DifferentialDecorated<U extends MultigradedElement<U>, T extends MultigradedVectorSpace<U>> extends Decorated<U,T>
+/* TODO be clever and use the Leibniz rule. Also use user information about known differentials.
+ * Can we encode these sorts of constraints as a SAT instance, and feed it into a solver?
+ * Are the constraints linear over F_p? -- can we solve this problem via Gaussian elimination? */
+public class DifferentialDecorated<U extends MultigradedElement<U>, T extends MultigradedComputation<U>> extends Decorated<U,T>
 {
     Collection<DifferentialRule> rules;
 
@@ -25,9 +26,9 @@ public class DifferentialDecorated<U extends MultigradedElement<U>, T extends Mu
 
         for(DifferentialRule rule : rules) {
             int[] i = Arrays.copyOf(rule.initial, rule.initial.length);
-            for(int j = 0; j < i.length && j < u.deg().length; j++)
-                i[j] += u.deg()[j];
-            while(und.getState(i) >= MultigradedVectorSpace.STATE_OK_TO_QUERY) {
+            for(int j = 0; j < i.length && j < u.multideg().length; j++)
+                i[j] += u.multideg()[j];
+            while(und.getState(i) >= MultigradedComputation.STATE_OK_TO_QUERY) {
                 if(und.gens(i) == null) {
                     System.out.print("null gens at i: ");
                     for(int k : i)

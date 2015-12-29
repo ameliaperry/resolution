@@ -1,18 +1,20 @@
-package res.algebratypes;
+package res.algebras;
+
+import res.algebratypes.*;
 
 public class Generator<T> implements MultigradedElement<Generator<T>>
 {
-    public DModSet<T> img;
+    public ModSet<?> img;
 
     public int[] deg;
     public int idx;
     public String extraInfo = "";
     
-    public Generator(int[] deg, int idx)
+    public <U> Generator(int[] deg, int idx)
     {
         this.deg = deg;
         this.idx = idx;
-        img = new DModSet<T>();
+        img = new ModSet<U>();
     }
             
     @Override public int compareTo(Generator<T> b)
@@ -25,7 +27,7 @@ public class Generator<T> implements MultigradedElement<Generator<T>>
         return idx - b.idx;
     }
 
-    @Override public int[] deg()
+    @Override public int[] multideg()
     {
         return deg;
     }

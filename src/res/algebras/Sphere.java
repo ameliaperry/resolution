@@ -1,9 +1,9 @@
 package res.algebras;
 
 import res.algebratypes.*;
-import java.util.*;
+import java.util.Collections;
 
-public class Sphere<T extends GradedElement<T>> extends GradedModule<T,T>
+public class Sphere<T extends GradedElement<T>> extends AbstractGradedModule<T,T>
 {
     T unit;
 
@@ -13,14 +13,14 @@ public class Sphere<T extends GradedElement<T>> extends GradedModule<T,T>
         /* XXX should follow the number of extra gradings on alg */
     }
 
-    @Override public Iterable<T> basis(int deg) {
+    @Override public Iterable<T> gens(int deg) {
         if(deg != 0) return Collections.emptyList();
         else return Collections.singleton(unit);
     }
 
     @Override public ModSet<T> times(T o, T sq)
     {
-        ModSet<T> ret = new DModSet<T>();
+        ModSet<T> ret = new ModSet<T>();
         if(sq.equals(unit))
             ret.add(unit,1);
         return ret;

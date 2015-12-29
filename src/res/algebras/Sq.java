@@ -18,10 +18,11 @@ public class Sq implements GradedElement<Sq>
     public int[] q; /* Indices of the power operations.
                 Mod 2, i indicates Sq^i.
                 Mod p>2, 2i(p-1) indicates P^i, 2i(p-1)+1 indicates B P^i. */
+    public int[] deg;
 
 
     public Sq(int[] qq) { q = qq; }
-    public Sq(int qq) { q = new int[] {qq}; }
+    public Sq(int qq) { this(new int[] {qq}); }
     
     private static final int[] EMPTY = new int[] {};
     private static final int[] ZERO = new int[] {0};
@@ -33,18 +34,19 @@ public class Sq implements GradedElement<Sq>
 
     /* novikov filtration is 1 if there are no betas. this returns 1 for the
      * identity operation; is this okay? */
-    @Override public int[] extraGrading()
+    @Override public int[] multideg()
     {
+        int deg = deg();
         if(Config.MICHAEL_MODE) {
             for(int i : q)
                 if(i % Config.P != 0)
-                    return ZERO;
-            return ONE;
+                    return new int[] {deg,0};
+            return new int[] {deg,1};
         } else if(Config.MOTIVIC_GRADING) {
             int tot = 0;
             for(int a : q) tot += a/2;
-            return SINGLETONS[tot];
-        } else return EMPTY;
+            return new int[] {deg,tot};
+        } else return SINGLETONS[deg];
     }
 
     @Override public int deg()
@@ -214,6 +216,10 @@ public class Sq implements GradedElement<Sq>
             }
         }
         return s;
+    }
+
+    @Override public String extraInfo() {
+        return "";
     }
 
     @Override public int hashCode()

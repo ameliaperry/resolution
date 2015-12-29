@@ -6,32 +6,14 @@ import java.io.*;
 import java.util.*;
 import javax.swing.*;
 
-public class BrunerNotationModule extends AbstractGradedModule<Dot<Sq>,Sq>
+public class BrunerNotationModule extends AbstractGradedModule<BrunerNotationElement,Sq>
 {
-    ArrayList<Dot<Sq>> dotsidx = new ArrayList<Dot<Sq>>();
-    Map<Integer,ArrayList<Dot<Sq>>> dots = new TreeMap<Integer,ArrayList<Dot<Sq>>>();
-
-    Map<Dot<Sq>,Map<Integer,ModSet<Dot<Sq>>>> actions = new TreeMap<Dot<Sq>,Map<Integer,ModSet<Dot<Sq>>>>();
-
-    static <T> Collection<T> getRO(Map<Integer,ArrayList<T>> map, int i) {
-        ArrayList<T> alist = map.get(i);
-        if(alist == null) return Collections.emptySet();
-        else return alist;
-    }
-    static <T> ArrayList<T> getRW(Map<Integer,ArrayList<T>> map, int i) {
-        ArrayList<T> alist = map.get(i);
-        if(alist == null) {
-            ArrayList<T> ret = new ArrayList<T>(1);
-            map.put(i,ret);
-            return ret;
-        }
-        else return alist;
-    }
+    ArrayList<BrunerNotationElement> dots = new ArrayList<BrunerNotationElement>();
+    Map<Pair<BrunerNotationElement,Integer>,ModSet<BrunerNotationElement>> actions = new TreeMap<Pair<BrunerNotationElement,Integer>,ModSet<BrunerNotationElement>>();
 
 
     public BrunerNotationModule()
     {
-        /* XXX issues with extra gradings -- follow alg? */
         JFileChooser jfc = new JFileChooser();
         jfc.setDialogTitle("Load module...");
         int ret = jfc.showOpenDialog(null);
@@ -58,18 +40,12 @@ public class BrunerNotationModule extends AbstractGradedModule<Dot<Sq>,Sq>
 
         /* line 2: degrees of generators */
         String[] toks = reader.readLine().split(" ");
-        if(toks.length != n) {
-            System.err.println("Error in bruner-notation module: number of degrees of generators on line 2 is not the given number of generators on line 1");
-            System.exit(1);
-        }
+        if(toks.length != n)
+            throw new RuntimeException("Error in bruner-notation module: number of degrees of generators on line 2 is not the given number of generators on line 1");
+
         for(int i = 0; i < n; i++) {
             int deg = Integer.parseInt(toks[i]);
-            ArrayList<Dot<Sq>> adots = getRW(dots,deg);
-            Generator<Sq> g = new Generator<Sq>(new int[] {-1,deg,0},adots.size());
-            Dot<Sq> d = new Dot<Sq>(g, Sq.UNIT);
-            dotsidx.add(d);
-            adots.add(d);
-            actions.put(d,new TreeMap<Integer,ModSet<Dot<Sq>>>());
+            dots.add(new BrunerNotationElement(i,deg));
         }
 
 
@@ -82,60 +58,49 @@ public class BrunerNotationModule extends AbstractGradedModule<Dot<Sq>,Sq>
             int r = Integer.parseInt(toks[1]);
             int k = Integer.parseInt(toks[2]);
 
-            ModSet<Dot<Sq>> set = new ModSet<Dot<Sq>>();
+            ModSet<BrunerNotationElement> set = new ModSet<BrunerNotationElement>();
 
             if(Config.P == 2) {
-                if(toks.length != 3 + k) {
-                    System.err.printf("Bruner notation: invalid action specification for Sq^%d g_%d\n", r, g);
-                    System.exit(1);
-                }
-
+                if(toks.length != 3 + k)
+                    throw new RuntimeException("Bruner notation: invalid action specification for Sq^"+r+" g_"+g);
                 for(int i = 3; i < 3+k; i++)
-                    set.add(dotsidx.get(Integer.parseInt(toks[i])),1);
-
+                    set.add(dots.get(Integer.parseInt(toks[i])),1);
             } else {
-                if(toks.length != 3 + 2*k) {
-                    System.err.printf("Bruner notation: invalid action specification for Sq^%d g_%d\n", r, g);
-                    System.exit(1);
-                }
+                if(toks.length != 3 + 2*k)
+                    throw new RuntimeException("Bruner notation: invalid action specification for Sq^"+r+" g_"+g);
                 for(int i = 0; i < k; i++)
-                    set.add(dotsidx.get(Integer.parseInt(toks[3+2*i])), Integer.parseInt(toks[4+2*i]));
+                    set.add(dots.get(Integer.parseInt(toks[3+2*i])), Integer.parseInt(toks[4+2*i]));
             }
 
-            actions.get(dotsidx.get(g)).put(r,set);
+            actions.put(new Pair<BrunerNotationElement,Integer>(dots.get(g),r), set);
         }
-
 
         reader.close();
     }
 
-    @Override public Iterable<Dot<Sq>> basis(int deg)
+    @Override public Iterable<BrunerNotationElement> gens(int deg)
     {
-        return getRO(dots,deg);
+        ArrayList<BrunerNotationElement> ret = new ArrayList<BrunerNotationElement>();
+        for(BrunerNotationElement el : dots)
+            if(el.deg == deg) ret.add(el);
+        return ret;
     }
 
-    ModSet<Dot<Sq>> zero = new ModSet<Dot<Sq>>();
-    @Override public ModSet<Dot<Sq>> times(Dot<Sq> o, Sq sq)
+    static ModSet<BrunerNotationElement> zero = new ModSet<BrunerNotationElement>();
+    @Override public ModSet<BrunerNotationElement> times(BrunerNotationElement o, Sq sq)
     {
         if(sq.q.length == 0)
-            return new ModSet<Dot<Sq>>(o);
+            return new ModSet<BrunerNotationElement>(o);
         else if(sq.q.length == 1) {
-
-            Map<Integer,ModSet<Dot<Sq>>> map = actions.get(o);
-            if(map == null) {
-                System.err.println("Foreign dot detected in BrunerNotationModule");
-                System.exit(1);
-            }
-            ModSet<Dot<Sq>> ret = map.get(sq.q[0]);
-            if(ret == null) return zero; // no defined action indicates zero
-            else return ret;
-
+            ModSet<BrunerNotationElement> ret = actions.get(new Pair<BrunerNotationElement,Integer>(o,sq.q[0]));
+            if(ret != null) return ret;
+            return zero;
         } else {
             int[] sqcopy = new int[sq.q.length-1];
             for(int i = 0; i < sq.q.length-1; i++) sqcopy[i] = sq.q[i];
             Sq next = new Sq(sqcopy);
             Sq curr = new Sq(sq.q[sq.q.length-1]);
-            return act(o, curr).times(next,this);
+            return times(o, curr).times(next,this);
         }
     }
 

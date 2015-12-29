@@ -1,4 +1,4 @@
-package res.algebra;
+package res.algebratypes;
 
-public interface GradedCoalgebra<T> extends GradedComodule<T>, MultigradedCoalgebra<T> { }
+public interface GradedCoalgebra<T> extends GradedComodule<T,T>, MultigradedCoalgebra<T> { }
 

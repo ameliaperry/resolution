@@ -1,10 +1,10 @@
-package res.algebra;
+package res.algebratypes;
 
 import java.util.Collection;
 
 public interface MultigradedVectorSpace<T>
 {
     public int num_gradings();
-    public Collection<T> gens(int[] i);
+    public Iterable<T> gens(int[] i);
 }
 

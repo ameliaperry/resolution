@@ -3,7 +3,7 @@ package res.algebras;
 import res.algebratypes.*;
 import java.util.*;
 
-public class CofibHopf extends GradedModule<Sq,Sq>
+public class CofibHopf extends AbstractGradedModule<Sq,Sq>
 {
     private int i;
     private int hideg;
@@ -12,10 +12,10 @@ public class CofibHopf extends GradedModule<Sq,Sq>
     public CofibHopf(int i)
     {
         this.i = i;
-        this.hideg = Sq.HOPF[i].deg[1];
+        this.hideg = 1<<i;
     }
 
-    @Override public Iterable<Sq> basis(int deg)
+    @Override public Iterable<Sq> gens(int deg)
     {
         if(deg == 0) return Collections.singleton(Sq.UNIT);
         if(deg == hideg) return Collections.singleton(Sq.HOPF[i]);
@@ -25,10 +25,10 @@ public class CofibHopf extends GradedModule<Sq,Sq>
     @Override public ModSet<Sq> times(Sq o, Sq sq)
     {
         ModSet<Sq> ret = new ModSet<Sq>();
-        if(o.deg[1] == 0) {
+        if(o.equals(Sq.UNIT)) {
             if(sq.equals(Sq.UNIT) || sq.equals(Sq.HOPF[i]))
-            ret.add(sq,1);
-        } else if(o.deg[1] == hideg && sq.equals(Sq.UNIT))
+                ret.add(sq,1);
+        } else if(sq.equals(Sq.UNIT) && o.equals(Sq.HOPF[i]))
             ret.add(Sq.HOPF[i],1);
         return ret;
     }

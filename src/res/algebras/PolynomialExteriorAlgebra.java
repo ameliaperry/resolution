@@ -12,12 +12,9 @@ public class PolynomialExteriorAlgebra extends AbstractMultigradedAlgebra<PEMono
     private PEGenerator[] gens;
     private Map<int[],Set<PEMonomial>> cache = new TreeMap<int[],Set<PEMonomial>>(Multidegrees.multidegComparator);
 
-    private PriorityQueue<PEQueueElt> queue = new PriorityQueue<PEQueueElt>();
-    private int curr = 0;
-
     public PolynomialExteriorAlgebra(int[][] egens, String[] enames, int[][] pgens, String[] pnames)
     {
-        gens = new PEGenerator[egen.length + pgen.length];
+        gens = new PEGenerator[egens.length + pgens.length];
         int idx = 0;
         for(int i = 0; i < egens.length; i++) {
             PEGenerator g = new PEGenerator();
@@ -39,13 +36,21 @@ public class PolynomialExteriorAlgebra extends AbstractMultigradedAlgebra<PEMono
         }
     }
 
+    public PolynomialExteriorAlgebra(PEGenerator[] gens) {
+        this.gens = gens;
+    }
+
 
     /* methods implementing MultigradedAlgebra */
     @Override public int num_gradings() {
         return num_gradings;
     }
 
-    @Override public synchronized Collection<PEMonomial> gens(int[] deg)
+    @Override public PEMonomial unit() {
+        return makeMonom(new int[gens.length]);
+    }
+
+    @Override public synchronized Iterable<PEMonomial> gens(int[] deg)
     {
         Set<PEMonomial> ret = cache.get(deg);
         if(ret != null) return ret;
@@ -55,8 +60,8 @@ gen_loop:
         for(int g = 0; g < gens.length; g++) {
             int[] odeg = new int[deg.length];
             for(int i = 0; i < deg.length; i++) {
-                prev[i] = deg[i] - g.deg[i];
-                if(prev[i] < 0) continue gen_loop;
+                odeg[i] = deg[i] - gens[g].deg[i];
+                if(odeg[i] < 0) continue gen_loop;
             }
 
             for(PEMonomial omon : gens(odeg)) {
@@ -94,41 +99,5 @@ gen_loop:
         if(ret.name.equals("")) ret.name = "1";
         return ret;
     }
-}
-
-class PEMonomial implements MultigradedElement<PEMonomial>
-{
-    int[] deg;
-    int[] exponents;
-    String name;
-
-    @Override public int[] deg() {
-        return deg;
-    }
-
-    @Override public String toString() {
-        return name;
-    }
-
-    @Override public String extraInfo() {
-        return "";
-    }
-
-    @Override public int compareTo(PEMonomial o)
-    {
-        for(int i = 0; i < exponents.length; i++) {
-            int d = exponents[i] - o.exponents[i];
-            if(d != 0) return d;
-        }
-        return 0;
-    }
-}
-
-class PEGenerator
-{
-    int[] deg;
-    int totaldeg;
-    String name;
-    boolean exterior;
 }
 

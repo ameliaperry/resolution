@@ -1,9 +1,9 @@
 package res.transform;
 
-import res.algebra.*;
+import res.algebratypes.*;
 import java.util.*;
 
-public class TrivialDecorated<U extends MultigradedElement<U>, T extends MultigradedVectorSpace<U>> extends Decorated<U,T>
+public class TrivialDecorated<U extends MultigradedElement<U>, T extends MultigradedComputation<U>> extends Decorated<U,T>
 {
     public TrivialDecorated(T t) {
         super(t);

@@ -1,4 +1,4 @@
-package res.algebra;
+package res.algebratypes;
 
 public class Pair<T,U>
 {
@@ -11,3 +11,4 @@ public class Pair<T,U>
         this.b = u;
     }
 }
+

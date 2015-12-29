@@ -1,8 +1,8 @@
-package res.algebra;
+package res.algebratypes;
 
 public interface MultigradedElement<T> extends Comparable<T>
 {
-    int[] deg();
+    int[] multideg();
     String extraInfo();
 }
 

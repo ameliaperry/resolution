@@ -3,7 +3,7 @@ package res.algebras;
 import res.algebratypes.*;
 import java.util.*;
 
-public class A1 extends AbstractGradedModule<Sq>
+public class A1 extends AbstractGradedModule<Sq,Sq>
 {
     private static Sq sq0 = new Sq(0);
     private static Sq sq1 = new Sq(1);
@@ -16,14 +16,14 @@ public class A1 extends AbstractGradedModule<Sq>
     private static Sq sq3sq1 = new Sq(new int[] {3,1});
     private static Sq sq4sq1 = new Sq(new int[] {4,1});
     private static Sq sq5sq1 = new Sq(new int[] {5,1});
-    private ArrayList<Dot<Sq>> deg3 = new ArrayList<Dot<Sq>>();
+    private ArrayList<Sq> deg3 = new ArrayList<Sq>();
 
     public A1() {
         deg3.add(sq2sq1);
         deg3.add(sq3);
     }
 
-    @Override public Iterable<Dot<Sq>> basis(int deg)
+    @Override public Iterable<Sq> gens(int deg)
     {
         switch(deg) {
         case 0: return Collections.singleton(sq0);
@@ -37,7 +37,7 @@ public class A1 extends AbstractGradedModule<Sq>
         }
     }
 
-    @Override public ModSet<Sq> act(Sq o, Sq sq)
+    @Override public ModSet<Sq> times(Sq o, Sq sq)
     {
         ModSet<Sq> ret = new ModSet<Sq>();
         if(sq.equals(sq0)) ret.add(o,1);
@@ -46,7 +46,7 @@ public class A1 extends AbstractGradedModule<Sq>
             else if(sq.equals(sq1) || sq.equals(sq2) || sq.equals(sq3) || sq.equals(sq2sq1) || sq.equals(sq3sq1) || sq.equals(sq4sq1) || sq.equals(sq5sq1))
                 ret.add(sq,1);
         } else if(o.equals(sq1)) {
-            if(sq.equals(sq2)) ret.add(sq2sq2,1);
+            if(sq.equals(sq2)) ret.add(sq2sq1,1);
             else if(sq.equals(sq3)) ret.add(sq3sq1,1);
             else if(sq.equals(sq4)) ret.add(sq4sq1,1);
             else if(sq.equals(sq5)) ret.add(sq5sq1,1);

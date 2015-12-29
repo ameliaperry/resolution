@@ -1,10 +1,12 @@
 package res.utils;
 
-public final class MapIterable<T,U> extends Iterable<U>
+import java.util.*;
+
+public final class MapIterable<T,U> implements Iterable<U>
 {
     final Func<T,U> map;
     final Iterable<T> input;
-    MapIterable(Iterable<T> input, Func<T,U> map) {
+    public MapIterable(Iterable<T> input, Func<T,U> map) {
         this.map = map;
         this.input = input;
     }
@@ -12,11 +14,11 @@ public final class MapIterable<T,U> extends Iterable<U>
     @Override public Iterator<U> iterator() {
         return new Iterator<U>() {
             Iterator<T> under = input.iterator();
-            @Override boolean hasNext() {
+            @Override public boolean hasNext() {
                 return under.hasNext();
             }
-            @Override Sq next() {
-                return map.run(under.hasNext());
+            @Override public U next() {
+                return map.run(under.next());
             }
             @Override public void remove() {
                 under.remove();

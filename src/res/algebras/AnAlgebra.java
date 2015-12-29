@@ -1,5 +1,6 @@
 package res.algebras;
 
+import res.*;
 import res.algebratypes.*;
 import java.util.*;
 
@@ -28,7 +29,7 @@ public class AnAlgebra extends AbstractGradedAlgebra<AnElement>
     Map<Integer, Map<Sq,AnElement>> basis = new TreeMap<Integer, Map<Sq,AnElement>>();
     Map<AnElement,Map<AnElement,ModSet<AnElement>>> mult = new TreeMap<AnElement,Map<AnElement,ModSet<AnElement>>>();
 
-    @Override public Iterable<AnElement> basis(int n)
+    @Override public Iterable<AnElement> gens(int n)
     {
         Map<Sq,AnElement> ret = basis.get(n);
         if(ret != null) return ret.values();
@@ -45,11 +46,11 @@ public class AnAlgebra extends AbstractGradedAlgebra<AnElement>
 
             // multiply everything from lower degrees
             for(int d = 1; d < n; d++) {
-                for(AnElement a : basis(d)) {
+                for(AnElement a : gens(d)) {
                     if(! mult.containsKey(a))
                         mult.put(a, new TreeMap<AnElement,ModSet<AnElement>>());
 
-                    for(AnElement b : basis(n-d)) {
+                    for(AnElement b : gens(n-d)) {
                         // multiply
                         ModSet<Sq> prod = new ModSet<Sq>();
                         for(Map.Entry<Sq,Integer> e1 : a.modset.entrySet()) {

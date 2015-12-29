@@ -2,6 +2,6 @@ package res.algebratypes;
 
 public interface GradedVectorSpace<T>
 {
-    public Iterable<Dot<T>> basis(int deg);
+    public Iterable<T> gens(int deg);
 }
 

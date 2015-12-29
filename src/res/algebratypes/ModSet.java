@@ -37,8 +37,18 @@ public class ModSet<T> extends TreeMap<T,Integer>
     public ModSet<T> scaled(int scale)
     {
         ModSet<T> ret = new ModSet<T>();
-        for(Map.Entry<T,Integer> e : entrySet())
-            ret.add(e.getKey(), e.getValue() * scale);
+        ret.add(this, scale);
+        return ret;
+    }
+
+    public <U> ModSet<T> times(U sq, Module<T,U> mod)
+    {
+        ModSet<T> ret = new ModSet<T>();
+        for(Map.Entry<T,Integer> e1 : entrySet()) {
+            ModSet<T> prod = mod.times(e1.getKey(), sq);
+            for(Map.Entry<T,Integer> e2 : prod.entrySet())
+                ret.add(e2.getKey(), e1.getValue() * e2.getValue());
+        }
         return ret;
     }
 

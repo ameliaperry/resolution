@@ -1,8 +1,9 @@
-package res.algebratypes;
+package res.algebras;
 
+import res.algebratypes.*;
 import java.util.*;
 
-public class Dot<T extends GradedElement<T>> implements Comparable<Dot<T>>
+public class Dot<T extends MultigradedElement<T>> implements Comparable<Dot<T>>, MultigradedElement<Dot<T>>
 {
     /* kernel basis vector */
     public T sq;
@@ -12,13 +13,13 @@ public class Dot<T extends GradedElement<T>> implements Comparable<Dot<T>>
     public Dot(Generator<T> base, T sq) { /* square dot */
         this.base = base;
         this.sq = sq;
-        deg = Arrays.copyOf(base.deg, base.deg.length);
-        deg[1] += sq.deg();
-        int[] ex = sq.extraGrading();
-        for(int i = 0; i < ex.length; i++)
-            deg[i+2] += ex[i];
+        deg = Multidegrees.sumdeg(base.deg,sq.multideg());
     }
-    
+
+    @Override public int[] multideg() {
+        return deg;
+    }
+
     @Override public String toString()
     {
         String ret = sq.toString() + "(" + base.deg[1] + ";" + base.idx + ")";
@@ -31,6 +32,9 @@ public class Dot<T extends GradedElement<T>> implements Comparable<Dot<T>>
             ret += ")";
         }
         return ret;
+    }
+    @Override public String extraInfo() {
+        return "";
     }
     @Override public boolean equals(Object o)
     {

@@ -1,9 +1,9 @@
 package res.transform;
 
-import res.algebra.*;
+import res.algebratypes.*;
 import java.util.*;
 
-public abstract class Decorated<U extends MultigradedElement<U>, T extends MultigradedVectorSpace<U>>
+public abstract class Decorated<U extends MultigradedElement<U>, T extends MultigradedComputation<U>>
 {
     private final T under;
 

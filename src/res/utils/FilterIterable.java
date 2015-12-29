@@ -1,29 +1,31 @@
 package res.utils;
 
-public final class FilterIterable<T> extends Iterable<T>
+import java.util.*;
+
+public final class FilterIterable<T> implements Iterable<T>
 {
     final Func<T,Boolean> filter;
     final Iterable<T> input;
-    FilterIterable(Iterable<T> input, Func<T,Boolean> filter) {
+    public FilterIterable(Iterable<T> input, Func<T,Boolean> filter) {
         this.filter = filter;
         this.input = input;
     }
 
-    @Override public Iterator<Sq> iterator() {
+    @Override public Iterator<T> iterator() {
         return new Iterator<T>() {
             Iterator<T> under = input.iterator();
-            T next = null;
-            @Override boolean hasNext() {
+            T nxt = null;
+            @Override public boolean hasNext() {
                 while(under.hasNext()) {
-                    next = under.next();
-                    if(filter.run(next)) return true;
+                    nxt = under.next();
+                    if(filter.run(nxt)) return true;
                 }
-                next = null;
+                nxt = null;
                 return false;
             }
-            @Override Sq next() {
-                if(next == null && hasNext() == false) throw new NoSuchElementException();
-                return next;
+            @Override public T next() {
+                if(nxt == null && hasNext() == false) throw new NoSuchElementException();
+                return nxt;
             }
             @Override public void remove() {
                 under.remove();

@@ -6,14 +6,14 @@ import res.utils.*;
 import java.util.*;
 
 /* The Steenrod algebra. */
-public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements Coalgebra<Sq>
+public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements GradedBialgebra<Sq>
 {
     public SteenrodAlgebra() {}
 
-    @Override public Iterable<Sq> basis(int n)
+    @Override public Iterable<Sq> gens(int n)
     {
         return new MapIterable<int[],Sq>(part_p(n,n), new Func<int[],Sq>() {
-            @Override Sq run(int[] q) {
+            @Override public Sq run(int[] q) {
                 return new Sq(q);
             }
         });
@@ -29,6 +29,11 @@ public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements Coalge
         return Sq.UNIT;
     }
 
+    @Override public int counit(Sq sq) {
+        if(sq.equals(Sq.UNIT)) return 1;
+        return 0;
+    }
+
     @Override public List<Sq> distinguished()
     {
         ArrayList<Sq> ret = new ArrayList<Sq>();
@@ -36,17 +41,7 @@ public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements Coalge
         ret.add(Sq.HOPF[1]);
         ret.add(Sq.HOPF[2]);
         ret.add(Sq.HOPF[3]);
-        ret.add(Sq.HOPF[4]);
-        ret.add(Sq.HOPF[5]);
-        ret.add(Sq.HOPF[6]);
         return ret;
-    }
-
-    @Override public int extraDegrees()
-    {
-        if(Config.MICHAEL_MODE && Config.P == 2) return 1;
-        if(Config.MOTIVIC_GRADING) return 1;
-        return 0;
     }
 
     private static Map<Integer,Iterable<int[]>> part_cache = new TreeMap<Integer,Iterable<int[]>>();
@@ -98,25 +93,25 @@ public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements Coalge
     }
     
     
-    private static Map<Sq,ModSet<Sq[]>> diagonal_cache = new TreeMap<Sq,ModSet<Sq[]>>();
-    @Override public ModSet<Sq[]> diagonal(Sq q)
+    private static Map<Sq,ModSet<Pair<Sq,Sq>>> diagonal_cache = new TreeMap<Sq,ModSet<Pair<Sq,Sq>>>();
+    @Override public ModSet<Pair<Sq,Sq>> diagonal(Sq q)
     {
-        ModSet<Sq[]> ret = diagonal_cache.get(q);
+        ModSet<Pair<Sq,Sq>> ret = diagonal_cache.get(q);
         if(ret != null) return ret;
 
-        ret = new ModSet<Sq[]>(sqArrayComparator);
+        ret = new ModSet<Pair<Sq,Sq>>();
 
         if(q.q.length == 0) {
-            ret.add(new Sq[] { Sq.UNIT, Sq.UNIT }, 1);
+            ret.add(new Pair<Sq,Sq>(Sq.UNIT,Sq.UNIT),1);
             diagonal_cache.put(q,ret);
             return ret;
         }
 
         if(q.q.length == 1) { /* cartan rule */
-            ret.add(new Sq[] { Sq.UNIT, q }, 1);
+            ret.add(new Pair<Sq,Sq>(Sq.UNIT, q), 1);
             for(int i = 1; i < q.q[0]; i++)
-                ret.add(new Sq[] { new Sq(i), new Sq(q.q[0]-i) }, 1);
-            ret.add(new Sq[] { q, Sq.UNIT }, 1);
+                ret.add(new Pair<Sq,Sq>(new Sq(i), new Sq(q.q[0]-i)), 1);
+            ret.add(new Pair<Sq,Sq>(q, Sq.UNIT), 1);
             diagonal_cache.put(q,ret);
             return ret;
         }
@@ -124,18 +119,17 @@ public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements Coalge
         /* general case: recurse by multiplication */
         Sq a = new Sq(Arrays.copyOf(q.q, q.q.length-1));
         Sq b = new Sq(q.q[q.q.length-1]);
-        ModSet<Sq[]> da = diagonal(a);
-        ModSet<Sq[]> db = diagonal(b);
+        ModSet<Pair<Sq,Sq>> da = diagonal(a);
+        ModSet<Pair<Sq,Sq>> db = diagonal(b);
 
-        for(Entry<Sq[],Integer> ea : da.entrySet()) {
-            Sq[] sqa = ea.getKey();
-            for(Entry<Sq[],Integer> eb : db.entrySet()) {
-                Sq[] sqb = eb.getKey();
-                for(Entry<Sq,Integer> e0 : sqa[0].times(sqb[0]).entrySet()) {
-                    for(Entry<Sq,Integer> e1 : sqa[1].times(sqb[1]).entrySet()) {
-                        ret.add(new Sq[] { e0.getKey(), e1.getKey() }, ea.getValue() * eb.getValue() * e0.getValue() * e1.getValue());
-                    }
-                }
+        for(Map.Entry<Pair<Sq,Sq>,Integer> ea : da.entrySet()) {
+            Pair<Sq,Sq> sqa = ea.getKey();
+            for(Map.Entry<Pair<Sq,Sq>,Integer> eb : db.entrySet()) {
+                Pair<Sq,Sq> sqb = eb.getKey();
+                for(Map.Entry<Sq,Integer> e0 : sqa.a.times(sqb.a).entrySet())
+                    for(Map.Entry<Sq,Integer> e1 : sqa.b.times(sqb.b).entrySet())
+                        ret.add(new Pair<Sq,Sq>(e0.getKey(), e1.getKey()), 
+                                ea.getValue() * eb.getValue() * e0.getValue() * e1.getValue());
             }
         }
 
@@ -144,3 +138,4 @@ public class SteenrodAlgebra extends AbstractGradedAlgebra<Sq> implements Coalge
     }
 
 }
+

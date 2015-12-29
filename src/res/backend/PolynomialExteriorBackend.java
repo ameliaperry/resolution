@@ -1,7 +1,8 @@
 package res.backend;
 
 import res.*;
-import res.algebra.*;
+import res.algebras.*;
+import res.algebratypes.*;
 import res.transform.*;
 import java.awt.Color;
 import java.util.*;
@@ -9,8 +10,8 @@ import javax.swing.*;
 
 
 public class PolynomialExteriorBackend
-    extends MultigradedAlgebra<PEMonomial>
-    implements Backend<PEMonomial, MultigradedAlgebra<PEMonomial>>
+    extends MultigradedAlgebraComputation<PEMonomial>
+    implements Backend<PEMonomial, MultigradedAlgebraComputation<PEMonomial>>
 {
 
     private int num_gradings = -1;
@@ -63,7 +64,7 @@ public class PolynomialExteriorBackend
         return num_gradings;
     }
 
-    @Override public Collection<PEMonomial> gens(int[] i)
+    @Override public Iterable<PEMonomial> gens(int[] i)
     {
         /* XXX hack */
         i[1] -= i[0];
@@ -78,14 +79,14 @@ public class PolynomialExteriorBackend
 
     @Override public int getState(int[] i)
     {
-        if(i.length < 2) return STATE_VANISHES;
+        if(i.length < 2) return STATE_FORMALLY_VANISHES;
 
         /* XXX hack */
         i[1] -= i[0];
 
         int tot = 0;
         for(int j : i) {
-            if(j < 0) return STATE_VANISHES;
+            if(j < 0) return STATE_FORMALLY_VANISHES;
             tot += j;
         }
         if(tot < curr) return STATE_DONE;
@@ -99,6 +100,11 @@ public class PolynomialExteriorBackend
         for(int i = 0; i < gens.length; i++)
             ret[i] = a.exponents[i] + b.exponents[i];
         return new ModSet<PEMonomial>(makeMonom(ret));
+    }
+
+    @Override public PEMonomial unit()
+    {
+        return makeMonom(new int[gens.length]);
     }
 
     @Override public void start()
@@ -143,10 +149,10 @@ public class PolynomialExteriorBackend
     }
 
 
-    public Decorated<PEMonomial, MultigradedAlgebra<PEMonomial>> getDecorated()
+    public Decorated<PEMonomial, MultigradedAlgebraComputation<PEMonomial>> getDecorated()
     {
         /* TODO ? */
-        return new TrivialDecorated<PEMonomial,MultigradedAlgebra<PEMonomial>>(this);
+        return new TrivialDecorated<PEMonomial,MultigradedAlgebraComputation<PEMonomial>>(this);
 
         /*
 
@@ -187,43 +193,6 @@ public class PolynomialExteriorBackend
         }
         set.add(val);
     }
-}
-
-class PEMonomial implements MultigradedElement<PEMonomial>
-{
-    int[] deg;
-    int[] exponents;
-    String name;
-
-    @Override public int[] deg() {
-        return deg;
-    }
-
-    @Override public String toString() {
-        return name;
-    }
-
-    @Override public String extraInfo() {
-        return "";
-    }
-
-    @Override public int compareTo(PEMonomial o)
-    {
-        for(int i = 0; i < exponents.length; i++) {
-            int d = exponents[i] - o.exponents[i];
-            if(d != 0) return d;
-        }
-        return 0;
-    }
-}
-
-
-class PEGenerator
-{
-    int[] deg;
-    int totaldeg;
-    String name;
-    boolean exterior;
 }
 
 class PEQueueElt implements Comparable<PEQueueElt>

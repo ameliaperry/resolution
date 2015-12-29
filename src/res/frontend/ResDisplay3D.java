@@ -1,7 +1,8 @@
 package res.frontend;
 
 import res.*;
-import res.algebra.*;
+import res.algebratypes.*;
+import res.algebras.*;
 import res.transform.*;
 
 import java.awt.*;
@@ -13,8 +14,8 @@ import java.util.List; /* for preference over java.awt.List */
 
 public class ResDisplay3D<U extends MultigradedElement<U>> extends JPanel implements PingListener, MouseMotionListener, MouseWheelListener
 {
-    private Decorated<U, ? extends MultigradedVectorSpace<U>> dec;
-    private MultigradedVectorSpace<U> under;
+    private Decorated<U, ? extends MultigradedComputation<U>> dec;
+    private MultigradedComputation<U> under;
 
     static final double SCALENOTCH = 0.9;
     static final double SCALEPIX = 0.994;
@@ -33,7 +34,7 @@ public class ResDisplay3D<U extends MultigradedElement<U>> extends JPanel implem
     boolean perspective = false;
 
 
-    private ResDisplay3D(Decorated<U, ? extends MultigradedVectorSpace<U>> dec)
+    private ResDisplay3D(Decorated<U, ? extends MultigradedComputation<U>> dec)
     {
         this.dec = dec;
         under = dec.underlying();
@@ -87,27 +88,29 @@ public class ResDisplay3D<U extends MultigradedElement<U>> extends JPanel implem
         for(int x = bounds[0]; x <= bounds[1]; x++) {
             for(int y = bounds[2]; y <= bounds[3]; y++) {
 
-                Collection<U> gens = under.gens(multideg(x,y));
+                Iterable<U> gens = under.gens(multideg(x,y));
                 if(gens == null) break;
                 
-                for(U d : gens) {
-                    int nov = (d.deg().length >= 3 ? d.deg()[2] : 0);
-                    if(nov < bounds[4] || nov > bounds[5])
-                        continue;
+                synchronized(under.gens_lock) {
+                    for(U d : gens) {
+                        int nov = (d.multideg().length >= 3 ? d.multideg()[2] : 0);
+                        if(nov < bounds[4] || nov > bounds[5])
+                            continue;
 
-                    int[] trideg = new int[] {x,y,nov};
+                        int[] trideg = new int[] {x,y,nov};
 
-                    Integer offset = offsets.get(trideg);
-                    if(offset == null) offset = 0;
+                        Integer offset = offsets.get(trideg);
+                        if(offset == null) offset = 0;
 
-                    Vertex v = new Vertex(x, y, nov);
-                    v.offset(offset);
-                    v.tp = full_transform(v.p);
+                        Vertex v = new Vertex(x, y, nov);
+                        v.offset(offset);
+                        v.tp = full_transform(v.p);
 
-                    offset++;
-                    offsets.put(trideg, offset);
+                        offset++;
+                        offsets.put(trideg, offset);
 
-                    vertexmap.put(d, v);
+                        vertexmap.put(d, v);
+                    }
                 }
             } 
         }
@@ -242,7 +245,7 @@ public class ResDisplay3D<U extends MultigradedElement<U>> extends JPanel implem
         repaint();
     }
 
-    public static <U extends MultigradedElement<U>> void constructFrontend(Decorated<U, ? extends MultigradedVectorSpace<U>> dec) 
+    public static <U extends MultigradedElement<U>> void constructFrontend(Decorated<U, ? extends MultigradedComputation<U>> dec) 
     {
         JFrame fr = new JFrame("Resolution 3D");
         fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

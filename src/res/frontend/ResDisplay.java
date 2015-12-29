@@ -1,7 +1,8 @@
 package res.frontend;
 
 import res.*;
-import res.algebra.*;
+import res.algebratypes.*;
+import res.algebras.*;
 import res.transform.*;
 
 import java.awt.*;
@@ -16,8 +17,8 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
     final static int DEFAULT_MAXFILT = 100;
     int BLOCK_WIDTH = 30;
 
-    Decorated<U, ? extends MultigradedVectorSpace<U>> dec;
-    MultigradedVectorSpace<U> under;
+    Decorated<U, ? extends MultigradedComputation<U>> dec;
+    MultigradedComputation<U> under;
 
     int[] minfilt;
     int[] maxfilt;
@@ -32,7 +33,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
     JTextArea textarea = null;
 
-    private ResDisplay(Decorated<U, ? extends MultigradedVectorSpace<U>> dec)
+    private ResDisplay(Decorated<U, ? extends MultigradedComputation<U>> dec)
     {
         setBackend(dec);
         addMouseListener(this);
@@ -40,7 +41,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
         addMouseWheelListener(this);
     }
 
-    public void setBackend(Decorated<U, ? extends MultigradedVectorSpace<U>> dec)
+    public void setBackend(Decorated<U, ? extends MultigradedComputation<U>> dec)
     {
         if(under != null)
             under.removeListener(this);
@@ -87,7 +88,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
     private boolean isVisible(U d)
     {
-        int[] deg = d.deg();
+        int[] deg = d.multideg();
         for(int i = 2; i < minfilt.length; i++)
             if(deg[i] < minfilt[i] || deg[i] > maxfilt[i])
                 return false;
@@ -141,19 +142,23 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
                 int cx = getcx(x);
                 int cy = getcy(y);
                 switch(under.getState(multideg(x,y))) {
-                    case MultigradedVectorSpace.STATE_NOT_COMPUTED:
+                    case MultigradedComputation.STATE_NOT_COMPUTED:
                         g.setColor(Color.black);
                         g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                         continue;
-                    case MultigradedVectorSpace.STATE_STARTED:
+                    case MultigradedComputation.STATE_QUEUED:
                         g.setColor(Color.darkGray);
                         g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                         continue;
-                    case MultigradedVectorSpace.STATE_PARTIAL:
+                    case MultigradedComputation.STATE_STARTED:
+                        g.setColor(new Color(128,0,0));
+                        g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
+                        continue;
+                    case MultigradedComputation.STATE_PARTIAL:
                         g.setColor(Color.yellow);
                         g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                         break;
-                    case MultigradedVectorSpace.STATE_VANISHES:
+                    case MultigradedComputation.STATE_FORMALLY_VANISHES:
                         g.setColor(Color.lightGray);
                         g.fillRect(cx-BLOCK_WIDTH/2, cy-BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                         continue;
@@ -165,10 +170,10 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
                     g.fillRect(cx - BLOCK_WIDTH/2, cy - BLOCK_WIDTH/2, BLOCK_WIDTH, BLOCK_WIDTH);
                 }
         
-                Collection<U> gens = under.gens(multideg(x,y));
+                Iterable<U> gens = under.gens(multideg(x,y));
 
                 int visible = 0;
-                synchronized(gens) {
+                synchronized(under.gens_lock) {
                     for(U d : gens) if(isVisible(d)) {
                         frameVisibles.add(d);
                         visible++;
@@ -241,26 +246,28 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
 
         String ret = "";
         switch(under.getState(multideg(x,y))) {
-            case MultigradedVectorSpace.STATE_VANISHES:
+            case MultigradedComputation.STATE_FORMALLY_VANISHES:
                 ret = "This degree vanishes formally.";
                 break;
-            case MultigradedVectorSpace.STATE_NOT_COMPUTED:
+            case MultigradedComputation.STATE_NOT_COMPUTED:
                 ret = "This degree has not yet been computed.";
                 break;
-            case MultigradedVectorSpace.STATE_STARTED:
+            case MultigradedComputation.STATE_STARTED:
                 ret = "This degree is still being computed.";
                 break;
-            case MultigradedVectorSpace.STATE_PARTIAL:
+            case MultigradedComputation.STATE_PARTIAL:
                 ret = "This degree might not yet be complete.\n";
                 // case falls through
-            case MultigradedVectorSpace.STATE_DONE:
+            case MultigradedComputation.STATE_DONE:
             default:
                 ret += "Bidegree ("+x+","+y+")\n";
-                Collection<U> gens = under.gens(multideg(x,y));
-                for(U d : gens) if(isVisible(d)) {
-                    ret += "\n" + d.toString();
-                    ret += "\n" + d.extraInfo();
-                    ret += "\n";
+                Iterable<U> gens = under.gens(multideg(x,y));
+                synchronized(under.gens_lock) {
+                    for(U d : gens) if(isVisible(d)) {
+                        ret += "\n" + d.toString();
+                        ret += "\n" + d.extraInfo();
+                        ret += "\n";
+                    }
                 }
         }
 
@@ -318,7 +325,7 @@ public class ResDisplay<U extends MultigradedElement<U>> extends JPanel implemen
             setSelected(selx,sely); // updates text
     }
 
-    public static <U extends MultigradedElement<U>> void constructFrontend(Decorated<U, ? extends MultigradedVectorSpace<U>> back) 
+    public static <U extends MultigradedElement<U>> void constructFrontend(Decorated<U, ? extends MultigradedComputation<U>> back) 
     {
         JFrame fr = new JFrame("Resolution");
         fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
