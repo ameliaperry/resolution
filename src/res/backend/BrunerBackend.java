@@ -88,14 +88,7 @@ public class BrunerBackend<M extends MultigradedElement<M>, T extends Multigrade
 
     @Override public int getState(int[] i)
     {
-        int sum = -i[0];
-        for(int j = 1; j < i.length; j++) {
-            if(i[j] < 0) return STATE_FORMALLY_VANISHES;
-            sum += i[j];
-        }
-        if(sum < 0) return STATE_FORMALLY_VANISHES;
-        /* TODO more sophisticated vanishing line ideas. An algebra should report a set of planes
-         * cutting out its support, and we work from there */
+        if(vanishesFormally(i)) return STATE_FORMALLY_VANISHES;
 
         boolean exists_queue = false;
         boolean exists_started = false;
@@ -122,18 +115,53 @@ public class BrunerBackend<M extends MultigradedElement<M>, T extends Multigrade
         else return STATE_NOT_COMPUTED;
     }
 
+    private boolean vanishesFormally(int[] i)
+    {
+        if(i[0] < 0) return true;
+        int sum = -i[0];
+        for(int j = 1; j < ngrad; j++) {
+            if(i[j] < 0) return true;
+            sum += i[j];
+        }
+        if(sum < 0) return true;
+        /* TODO more sophisticated vanishing line ideas. An algebra should report a set of planes
+         * cutting out its support, and we work from there */
+        return false;
+    }
+
     private boolean isKerComputed(int[] i)
     {
+        if(vanishesFormally(i)) return true;
         Integer s = status.get(i);
         if(s == null) return false;
         int si = s;
         if(si == STATE_KER_COMPUTED || si == STATE_DONE) return true;
         return false;
     }
+    private boolean isComputed(int[] i)
+    {
+        if(vanishesFormally(i)) return true;
+        Integer s = status.get(i);
+        if(s == null) return false;
+        int si = s;
+        return (si == STATE_DONE);
+    }
 
 
     long start;
-    BlockingQueue<int[]> tasks = new PriorityBlockingQueue<int[]>(50,Multidegrees.multidegComparator);
+    BlockingQueue<int[]> tasks = new PriorityBlockingQueue<int[]>(50,new Comparator<int[]>() {
+        @Override public int compare(int[] a, int[] b) { // determines the order of tasks
+            int suma = 0;
+            int sumb = 0;
+            for(int i : a) suma += i;
+            for(int i : b) sumb += i;
+            if(suma != sumb) return suma - sumb;
+            for(int i = 0; i < a.length; i++)
+                if(a[i] != b[i])
+                    return a[i] - b[i];
+            return 0;
+        }
+    });
 
     @Override public void start()
     {
@@ -153,9 +181,22 @@ public class BrunerBackend<M extends MultigradedElement<M>, T extends Multigrade
         }
         return false;
     }
-    
+
     private void tryQueue(int[] deg)
     {
+        if(vanishesFormally(deg)) return;
+
+        // check prerequisites
+        int[] reqdeg = Arrays.copyOf(deg,ngrad);
+        reqdeg[0]--;
+        if(!isKerComputed(reqdeg)) return;
+
+        for(int g = 1; g < ngrad; g++) {
+            reqdeg = Arrays.copyOf(deg,ngrad);
+            reqdeg[g]--;
+            if(!isComputed(reqdeg)) return;
+        }
+        
         if(claim_grid(deg)) {
             while(true) {
                 try {
@@ -166,22 +207,6 @@ public class BrunerBackend<M extends MultigradedElement<M>, T extends Multigrade
                 }
             }
         }
-    }
-
-    private void tryQueueIfReady(int[] deg)
-    {
-
-        /* TODO totally unfinished -- this is just some relevant code:
-        for(int g = 1; g < ngrad; g++) {
-            int[] reqdeg = Arrays.copyOf(nextdeg);
-            reqdeg[g]--;
-            if(!isComputed(reqdeg)) {
-                proceed = false;
-                break;
-            }
-        }
-        if(proceed) tryQueue(nextdeg);
-        */
     }
 
 
@@ -276,7 +301,7 @@ public class BrunerBackend<M extends MultigradedElement<M>, T extends Multigrade
         /* kick off the first child task (+1 homological degree) -- only depends ker, not gens */
         int[] nextdeg = Arrays.copyOf(deg, ngrad);
         nextdeg[0]++;
-        tryQueueIfReady(nextdeg);
+        tryQueue(nextdeg);
 
 
 
@@ -329,10 +354,13 @@ public class BrunerBackend<M extends MultigradedElement<M>, T extends Multigrade
 
         /* okbasis is done, free it. Note that okbasis is usually a restricted
          * view of the global kbasis object, and this call removes entries from that. */
-        okbasis.clear(); 
+//        okbasis.clear(); 
 
         /* save the result -- at this point the computation is considered finished */
-        status.put(deg, STATE_DONE);
+        synchronized(status) {
+            status.put(deg, STATE_DONE);
+            System.out.println("Setting done flag at "+Arrays.toString(deg));
+        }
         ping(deg);
 
         //if(Config.STDOUT) System.out.printf("%s: %3d gen, %3d ker\n\n", Arrays.toString(deg), dat.gens.size(), dat.kbasis.size());
@@ -350,7 +378,7 @@ public class BrunerBackend<M extends MultigradedElement<M>, T extends Multigrade
         for(int g = 1; g < ngrad; g++) {
             nextdeg = Arrays.copyOf(deg,ngrad);
             nextdeg[g]++;
-            tryQueueIfReady(nextdeg);
+            tryQueue(nextdeg);
         }
     }
     
@@ -418,7 +446,9 @@ class BrunerThread extends Thread
             }
             if(Config.DEBUG_THREADS) System.out.println(id + ": got task ...");
 
-            if(task[0] > Config.T_CAP)
+            int sum = 0;
+            for(int g = 1; g < task.length; g++) sum += task[g];
+            if(sum > Config.T_CAP)
                 continue;
             back.compute(task);
         }

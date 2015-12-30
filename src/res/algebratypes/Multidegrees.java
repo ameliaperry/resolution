@@ -33,7 +33,9 @@ public final class Multidegrees
     };
 
     public static int[] minkey(int[] req, int len) {
-        return req;
+        int[] newreq = Arrays.copyOf(req, req.length);
+        newreq[newreq.length - 1]--;
+        return maxkey(newreq, len);
     }
     public static int[] maxkey(int[] req, int len) {
         if(len <= req.length)
